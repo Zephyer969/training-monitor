@@ -13,8 +13,9 @@ import sys
 import sysconfig
 import time
 from typing import Dict, List, Optional
+from urllib.request import Request, urlopen
 
-import requests
+from monitor_config import load_desktop_config
 
 
 DEFAULT_LOG_ROOTS = (
@@ -101,6 +102,14 @@ def config_value(key: str, fallback: str = "") -> str:
     return os.getenv(f"TRAINING_MONITOR_{key}", read_config().get(key, fallback))
 
 
+def http_json_get(url: str, token: str = "", timeout: float = 5.0):
+    headers = {"X-Monitor-Token": token} if token else {}
+    request = Request(url, headers=headers, method="GET")
+    with urlopen(request, timeout=timeout) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+        return int(getattr(response, "status", 200)), payload
+
+
 def port() -> int:
     return int(config_value("PORT", "6006") or "6006")
 
@@ -170,7 +179,7 @@ def stop_one(path: Path, name: str, pattern: str = "") -> None:
 
 def backend_ready() -> bool:
     try:
-        requests.get(f"http://127.0.0.1:{port()}/api/health", timeout=3).raise_for_status()
+        http_json_get(f"http://127.0.0.1:{port()}/api/health", timeout=3)
         return True
     except Exception:
         return False
@@ -310,19 +319,105 @@ def watch_file(args: argparse.Namespace) -> None:
 def status(_: argparse.Namespace) -> None:
     current_token = token_init()
     try:
-        response = requests.get(
+        status_code, payload = http_json_get(
             f"http://127.0.0.1:{port()}/api/status",
-            headers={"X-Monitor-Token": current_token},
+            token=current_token,
             timeout=5,
         )
-        print("HTTP", response.status_code)
-        print(json.dumps(response.json(), ensure_ascii=False, indent=2))
+        print("HTTP", status_code)
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
         return
     except Exception as exc:
         print("server unavailable:", exc)
     if STATE_FILE.exists():
         print("local cached state:")
         print(json.dumps(json.loads(STATE_FILE.read_text(encoding="utf-8")), ensure_ascii=False, indent=2))
+
+
+def console(args: argparse.Namespace) -> None:
+    try:
+        from console_ui import run_console
+    except ImportError as exc:
+        raise SystemExit(
+            "console mode requires the optional dependency; install with: "
+            "python -m pip install -e '.[console]'"
+        ) from exc
+
+    url = args.url or f"http://127.0.0.1:{port()}"
+    token = args.token
+    if not token and url.rstrip("/").lower() in {
+        f"http://127.0.0.1:{port()}".lower(),
+        f"http://localhost:{port()}".lower(),
+    }:
+        token = token_init()
+    raise SystemExit(
+        run_console(
+            url=url,
+            token=token,
+            interval=args.interval,
+            history_limit=args.history_limit,
+            selected_id=args.run_id,
+            stale_after=args.stale_after,
+            once=args.once,
+            ascii_only=args.ascii,
+        )
+    )
+
+
+def desktop(args: argparse.Namespace) -> None:
+    try:
+        from desktop_ui import run_desktop
+    except ImportError as exc:
+        raise SystemExit(
+            "桌面模式需要 Pillow 和 Tk。源码直连模式请先运行: "
+            "py -3 -m pip install 'pillow>=10.0'\n" + str(exc)
+        ) from exc
+    try:
+        desktop_config = load_desktop_config(args.config)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    url = args.url or desktop_config.get("url", "")
+    interval = args.interval if args.interval is not None else desktop_config["interval"]
+    ssh = args.ssh if args.ssh is not None else desktop_config["ssh"]
+    remote_python = args.remote_python or desktop_config["remote_python"]
+    log_roots = tuple(args.log_root) if args.log_root is not None else desktop_config["log_roots"]
+    names_path = args.names_file or desktop_config.get("names_file") or None
+    local_bind = args.local_bind if args.local_bind is not None else desktop_config["local_bind"]
+    local_port = args.local_port if args.local_port is not None else desktop_config["local_port"]
+    local_token = args.local_token if args.local_token is not None else desktop_config["local_token"]
+    local_token_file = args.local_token_file if args.local_token_file is not None else desktop_config["local_token_file"]
+    cloudflare_enabled = (args.cloudflare if args.cloudflare is not None
+                          else desktop_config.get("cloudflare_enabled", False))
+    cloudflared_path = (args.cloudflared_path if args.cloudflared_path is not None
+                        else desktop_config.get("cloudflared_path", ""))
+    if local_token_file and not os.path.isabs(os.path.expanduser(local_token_file)):
+        config_path = desktop_config.get("config_path")
+        base_dir = Path(config_path).expanduser().parent if config_path else Path.cwd()
+        local_token_file = str(base_dir / local_token_file)
+    if not args.demo and not url:
+        if not ssh:
+            raise SystemExit(
+                "未配置训练服务器。请复制 monitor.config.example.json 为 "
+                "monitor.config.json，并填写 ssh；或运行 desktop --ssh user@host"
+            )
+        from direct_monitor import DirectClient
+        client = DirectClient(host=ssh, python=remote_python, interval=interval, roots=log_roots)
+        run_desktop('', '', interval=interval, client=client, names_path=names_path,
+                    local_bind=local_bind, local_port=local_port, local_token=local_token,
+                    local_token_file=local_token_file,
+                    cloudflare_enabled=cloudflare_enabled, cloudflared_path=cloudflared_path,
+                    local_gateway_enabled=not args.no_local_gateway)
+        return
+    token = args.token
+    if not args.demo and not token and url.rstrip("/") in {
+        f"http://127.0.0.1:{port()}", f"http://localhost:{port()}"
+    }:
+        token = token_init()
+    run_desktop(url, token, demo=args.demo, gpu_count=args.gpus, interval=interval,
+                names_path=names_path, local_bind=local_bind, local_port=local_port,
+                local_token=local_token, local_token_file=local_token_file,
+                cloudflare_enabled=cloudflare_enabled, cloudflared_path=cloudflared_path,
+                local_gateway_enabled=not args.no_local_gateway)
 
 
 def detect_public_url() -> str:
@@ -656,6 +751,47 @@ def setup_parser() -> argparse.ArgumentParser:
     sub.add_parser("doctor").set_defaults(func=doctor)
     sub.add_parser("fix-path").set_defaults(func=fix_path)
     sub.add_parser("logs").set_defaults(func=logs)
+
+    console_parser = sub.add_parser("console", help="open the dynamic terminal alchemy dashboard")
+    console_parser.add_argument("--url", default=os.getenv("TRAINING_MONITOR_URL", ""))
+    console_parser.add_argument(
+        "--token",
+        default=os.getenv("TRAINING_MONITOR_TOKEN", os.getenv("MONITOR_TOKEN", "")),
+    )
+    console_parser.add_argument("--interval", type=float, default=2.0)
+    console_parser.add_argument("--history-limit", type=int, default=120)
+    console_parser.add_argument("--run-id", default=None)
+    console_parser.add_argument("--stale-after", type=float, default=180.0)
+    console_parser.add_argument("--once", action="store_true")
+    console_parser.add_argument("--ascii", action="store_true")
+    console_parser.set_defaults(func=console)
+
+    desktop_parser = sub.add_parser("desktop", help="open the mentor alchemy desktop window")
+    desktop_parser.add_argument("--config", default=None, help="desktop JSON config (default: monitor.config.json)")
+    desktop_parser.add_argument("--url", default=None)
+    desktop_parser.add_argument("--token", default=os.getenv("TRAINING_MONITOR_TOKEN", os.getenv("MONITOR_TOKEN", "")))
+    desktop_parser.add_argument("--demo", action="store_true", help="use clearly labeled simulated data")
+    desktop_parser.add_argument("--gpus", type=int, choices=range(33), default=4, help="demo GPU count (0-32)")
+    desktop_parser.add_argument("--interval", type=float, default=None)
+    desktop_parser.add_argument("--ssh", default=None, help='SSH host or user@host; automatically discover active training logs')
+    desktop_parser.add_argument("--remote-python", default=None, help='remote Python executable, or auto (python3/python)')
+    desktop_parser.add_argument("--log-root", action='append', default=None, help='optional additional log directory or file')
+    desktop_parser.add_argument("--names-file", default=None, help='local JSON file for friendly run names and dismissals')
+    desktop_parser.add_argument(
+        "--local-bind", default=None,
+        help='desktop relay bind address (default: 0.0.0.0; Cloudflare mode forces 127.0.0.1)',
+    )
+    desktop_parser.add_argument("--local-port", type=int, default=None, help='desktop relay port (default: 8765)')
+    desktop_parser.add_argument("--local-token", default=None, help='token for phone clients; blank uses local token file')
+    desktop_parser.add_argument("--local-token-file", default=None, help='local file for the generated phone token')
+    desktop_parser.add_argument("--no-local-gateway", action="store_true", help='disable the phone relay')
+    desktop_parser.add_argument("--cloudflare", dest="cloudflare", action="store_true", default=None,
+                                help='start a temporary Cloudflare HTTPS tunnel for the phone relay')
+    desktop_parser.add_argument("--no-cloudflare", dest="cloudflare", action="store_false",
+                                help='do not start the Cloudflare tunnel')
+    desktop_parser.add_argument("--cloudflared-path", default=None,
+                                help='optional path to cloudflared/cloudflared.exe')
+    desktop_parser.set_defaults(func=desktop)
 
     watch = sub.add_parser("watch-file")
     watch.add_argument("path")

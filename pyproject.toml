@@ -17,16 +17,43 @@ dependencies = [
     "requests>=2.32",
 ]
 
+[project.optional-dependencies]
+console = [
+    "rich>=13.0",
+]
+pixel = [
+    "pillow>=10.0",
+]
+desktop = [
+    "pillow>=10.0",
+]
+
 [project.scripts]
 training-monitor = "monitorctl_py:main"
 training-monitor-watch = "auto_watch:main"
 
 [tool.setuptools]
 package-dir = {"" = "server"}
+packages = ["alchemy_assets"]
 py-modules = [
     "app",
     "auto_watch",
     "openmmlab_log",
     "training_monitor",
+    "hardware",
+    "console_ui",
+    "desktop_ui",
+    "pixel_window",
+    "pixel_assets",
+    "metric_series",
+    "monitor_config",
+    "direct_monitor",
+    "discovery_agent",
+    "run_aliases",
+    "local_gateway",
+    "cloudflare_tunnel",
     "monitorctl_py",
 ]
+
+[tool.setuptools.package-data]
+alchemy_assets = ["*.png"]

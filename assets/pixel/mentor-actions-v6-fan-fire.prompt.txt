@@ -1,0 +1,10 @@
+Use case: illustration-story pixel game animation.
+Input images: the current v5 large-cauldron action sheet as style and scene reference,
+plus the approved mentor identity anchor as the face and clothing reference.
+Output: a transparent 2x2 sprite sheet with four full-body frames of the same mentor
+using a feather fan / hand bellows to stoke the blue fire below the large bronze cauldron.
+Frames: fan raised, sweep left, sweep right with brighter flames, return to rest.
+Keep the narrow face, black hair, rectangular glasses, navy robe, proportions and
+cauldron unchanged; only arms, fan, fire and small magical effects move.
+Generated with built-in image generation, then checkerboard background removed locally.
+Runtime asset: server/alchemy_assets/mentor-actions-v6-fan-fire.png (1024x1536 RGBA, 2x2).

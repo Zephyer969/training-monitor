@@ -1,0 +1,9 @@
+Built-in imagegen. Reference: user supplied pixel training dashboard.
+Production 2x2 equally sized square scene atlas, no gutters, text or UI. Dark navy brick
+alchemy room, moon window, potions, books, candlelight, crisp pixel art.
+Top-left: empty room for compositing the existing approved mentor, no people.
+Top-right: purple-robed apprentice stirring purple cauldron.
+Bottom-left: blue-robed apprentice holding potion next to blue cauldron.
+Bottom-right: olive-green hooded apprentice resting beside an extinguished cauldron.
+All cells independent, coherent straight-on game dioramas. Runtime file:
+server/alchemy_assets/alchemy-rooms.png.

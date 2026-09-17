@@ -1,0 +1,25 @@
+Use case: stylized-concept game asset
+Asset type: transparent pixel-art animation sprite atlas for the desktop training monitor
+Input image: the existing mentor-actions-v5-large-cauldron.png is the identity and style reference.
+
+Create a replacement mentor action atlas with exactly 16 equal cells in a strict
+4-column by 4-row grid, read left-to-right and top-to-bottom as one continuous
+animation loop. Preserve the same mentor identity, face, glasses, short black
+hair, navy-and-gold alchemist robe, proportions, large bronze cauldron, and
+pixel-art rendering. Keep the face, clothing, feet, cauldron footprint, and
+baseline stable in every cell.
+
+Storyboard order:
+1-4: a smooth four-step ladle stirring cycle from center to left and back.
+5-8: reach for a small green potion bottle, lift it, pour into the cauldron,
+then lower it and return the free hand.
+9-12: take a small herb pouch, sprinkle herbs into the cauldron, then return to
+a two-handed stir.
+13-16: lift a small ladle sample, inspect it in a tiny glass vial, pour it back,
+then return to the centered stirring pose.
+
+Transparent background only. No fan, folding fan, fanning, wind tool, room,
+shelves, text, labels, watermark, checkerboard, extra character, face drift,
+different clothes, or different cauldron. Change only hand/tool positions and
+potion, herb, steam, and glow effects. Use crisp nearest-neighbour-friendly
+high-quality game pixel art.

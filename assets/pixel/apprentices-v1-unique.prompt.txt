@@ -1,0 +1,19 @@
+Create one transparent pixel-art sprite atlas for a desktop GPU training monitor.
+Use a strict 4-column by 4-row grid with 16 equal square cells and no labels,
+room background, watermark, or text. Every two adjacent cells are the two
+animation frames of one apprentice. Keep the character silhouette stable and
+make the movement subtle but readable.
+
+Pair A: purple-hat mage stirring a violet cauldron.
+Pair B: ice-blue hooded alchemist holding and raising a blue vial.
+Pair C: green herbalist dropping leaves into a wooden bowl.
+Pair D: orange firekeeper fanning a small burner flame.
+Pair E: red-brown scholar reading and unrolling a scroll.
+Pair F: teal crystal apprentice pouring glowing liquid into a bowl.
+Pair G: gray mechanic adjusting a brass alchemy burner.
+Pair H: rose-clad apprentice inspecting a glowing crystal orb.
+
+Use a cohesive high-quality game pixel-art style, crisp nearest-neighbour
+edges, strong silhouettes, transparent background, and distinct colors/tools
+for all eight identities. The atlas is used as two-frame per-card animation;
+do not alter or imitate the separate mentor identity.

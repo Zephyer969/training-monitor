@@ -11,6 +11,18 @@ def reset_test_state(tmp_path: Path) -> None:
     app_module.state.update(app_module.empty_state())
 
 
+def test_step_and_loss_reach_dashboard_history() -> None:
+    with TemporaryDirectory() as tmp:
+        reset_test_state(Path(tmp))
+        snapshot = app_module.update_status(TrainingUpdate(
+            run_id="dashboard", epoch=2, total_epochs=20, loss=0.12,
+            step=50, total_steps=100, iou=0.65))
+        run = snapshot["runs"][0]
+        assert run["step"] == 50 and run["total_steps"] == 100
+        assert run["loss"] == 0.12
+        assert run["history"][-1]["loss"] == 0.12
+
+
 def test_separate_gpu_runs_are_kept_side_by_side() -> None:
     with TemporaryDirectory() as tmp:
         reset_test_state(Path(tmp))
@@ -140,3 +152,33 @@ def test_batch_snapshot_keeps_history_after_finished_status() -> None:
         assert state["status"] == "finished"
         assert len(state["history"]) == 2
         assert state["best_metrics"]["mIoU"] == 70.0
+
+
+def test_phase_message_and_stopped_state_are_preserved() -> None:
+    with TemporaryDirectory() as tmp:
+        reset_test_state(Path(tmp))
+
+        app_module.update_status(
+            TrainingUpdate(
+                run_id="phase-run",
+                epoch=3,
+                total_epochs=10,
+                metrics={"loss": 0.4},
+                metric_name="loss",
+                phase="validating",
+                message="正在检查验证集",
+            )
+        )
+        state = app_module.update_status(
+            TrainingUpdate(
+                run_id="phase-run",
+                epoch=3,
+                total_epochs=10,
+                metrics={"loss": 0.4},
+                metric_name="loss",
+                status="stopped",
+            )
+        )
+
+        assert state["runs"][0]["phase"] == "stopped"
+        assert state["runs"][0]["message"] is None

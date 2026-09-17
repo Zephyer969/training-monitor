@@ -1,0 +1,7 @@
+include monitor.config.example.json
+include start-monitor.cmd
+include start-monitor.vbs
+include start-monitor-cloudflare.cmd
+include start-monitor-cloudflare.vbs
+include install-cloudflared.cmd
+recursive-include server/alchemy_assets *.png

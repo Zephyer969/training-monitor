@@ -3,22 +3,22 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>模迹 UI 预览</title>
+  <title>炼丹台 UI 预览</title>
   <style>
     :root {
-      --bg: #f7f9fc;
-      --panel: #ffffff;
-      --ink: #101828;
-      --muted: #667085;
-      --line: #e4e7ec;
-      --blue: #155eef;
-      --blue-soft: #eff4ff;
-      --green: #12b76a;
-      --amber: #f79009;
-      --dark: #101828;
-      --shadow: 0 8px 20px rgba(16, 24, 40, .07);
-      --radius: 12px;
-      font-family: Inter, "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      --bg: #020f18;
+      --panel: #061923;
+      --ink: #9ed6ff;
+      --muted: #648097;
+      --line: #287da0;
+      --blue: #48e5fa;
+      --blue-soft: #0b2638;
+      --green: #21efb0;
+      --amber: #ffcb57;
+      --dark: #020f18;
+      --shadow: none;
+      --radius: 2px;
+      font-family: "Courier New", Consolas, monospace;
     }
 
     * { box-sizing: border-box; }
@@ -55,9 +55,9 @@
     .app-icon {
       width: 62px;
       height: 62px;
-      border-radius: 18px;
+      border-radius: 2px;
       background: var(--blue);
-      box-shadow: 0 12px 24px rgba(21, 94, 239, .24);
+      box-shadow: none;
       display: grid;
       place-items: center;
       overflow: hidden;
@@ -77,9 +77,9 @@
     }
 
     .design-card {
-      background: rgba(255, 255, 255, .78);
-      border: 1px solid rgba(229, 234, 242, .9);
-      border-radius: 12px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 2px;
       padding: 18px;
       box-shadow: var(--shadow);
       backdrop-filter: blur(14px);
@@ -99,10 +99,10 @@
 
     .chip {
       border: 1px solid var(--line);
-      border-radius: 999px;
+      border-radius: 2px;
       padding: 8px 12px;
-      color: #344054;
-      background: #fff;
+      color: var(--ink);
+      background: var(--blue-soft);
       font-size: 13px;
     }
 
@@ -111,10 +111,10 @@
       min-height: 880px;
       margin: 0 auto;
       padding: 18px 16px 22px;
-      border-radius: 28px;
-      background: #f7f9fd;
-      border: 1px solid #d9e0ea;
-      box-shadow: 0 24px 60px rgba(16, 24, 40, .18);
+      border-radius: 2px;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      box-shadow: none;
       position: relative;
       overflow: hidden;
     }
@@ -177,9 +177,9 @@
     .gpu-tabs button {
       flex: 0 0 auto;
       border: 1px solid var(--line);
-      border-radius: 999px;
-      background: #fff;
-      color: #344054;
+      border-radius: 2px;
+      background: var(--blue-soft);
+      color: var(--ink);
       padding: 8px 12px;
       font-weight: 750;
     }
@@ -195,8 +195,8 @@
       min-width: 76px;
       color: var(--blue);
       background: var(--blue-soft);
-      border: 1px solid #d5e3ff;
-      border-radius: 999px;
+      border: 1px solid var(--blue);
+      border-radius: 2px;
       padding: 10px 16px;
       font-weight: 800;
       text-align: center;
@@ -238,7 +238,7 @@
     .primary-action {
       width: 100%;
       border: 0;
-      border-radius: 9px;
+      border-radius: 2px;
       padding: 11px 14px;
       color: #fff;
       background: var(--blue);
@@ -408,15 +408,15 @@
     }
 
     .readout {
-      background: #f8fafc;
-      border: 1px solid #e5eaf2;
-      border-radius: 14px;
+      background: var(--blue-soft);
+      border: 1px solid var(--line);
+      border-radius: 2px;
       padding: 12px 10px;
     }
 
     .readout span {
       display: block;
-      color: #64748b;
+      color: var(--muted);
       font-size: 12px;
       font-weight: 750;
       white-space: nowrap;
@@ -428,7 +428,7 @@
       display: block;
       margin-top: 7px;
       font-size: 18px;
-      color: #0f172a;
+      color: var(--ink);
     }
 
     .metric-grid {
@@ -439,11 +439,11 @@
     }
 
     .metric {
-      background: #fff;
+      background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 16px;
+      border-radius: 2px;
       padding: 16px;
-      box-shadow: 0 9px 22px rgba(15, 23, 42, .06);
+      box-shadow: none;
     }
 
     .metric strong {
@@ -474,14 +474,17 @@
       width: 100%;
       height: 270px;
       display: block;
+      background: #071f2d;
+      border: 1px solid var(--line);
+      image-rendering: pixelated;
     }
 
-    .axis { stroke: #d4dbe7; stroke-width: 1.3; }
-    .grid { stroke: #e6eaf1; stroke-width: 1; }
-    .series { fill: none; stroke: var(--blue); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .axis { stroke: var(--line); stroke-width: 2; shape-rendering: crispEdges; }
+    .grid { stroke: #0b2636; stroke-width: 1.5; stroke-dasharray: 4 4; shape-rendering: crispEdges; }
+    .series { fill: none; stroke: var(--blue); stroke-width: 3; stroke-linecap: butt; stroke-linejoin: bevel; shape-rendering: crispEdges; }
     .loss { stroke: var(--green); }
     .dot { fill: var(--blue); }
-    .axis-label { fill: #667085; font-size: 11px; font-weight: 700; }
+    .axis-label { fill: var(--muted); font-size: 11px; font-weight: 700; }
 
     .tabs {
       position: absolute;
@@ -492,18 +495,17 @@
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
       padding: 8px;
-      border-radius: 24px;
-      background: rgba(255, 255, 255, .9);
+      border-radius: 2px;
+      background: var(--panel);
       border: 1px solid var(--line);
-      box-shadow: 0 12px 32px rgba(15, 23, 42, .12);
-      backdrop-filter: blur(16px);
+      box-shadow: none;
     }
 
     .tab {
       border: 0;
       background: transparent;
-      border-radius: 18px;
-      color: #344054;
+      border-radius: 2px;
+      color: var(--muted);
       padding: 12px 8px;
       font-size: 16px;
       font-weight: 850;
@@ -513,7 +515,7 @@
     .tab.active {
       background: var(--blue-soft);
       color: var(--blue);
-      outline: 2px solid rgba(47, 110, 234, .26);
+      outline: 1px solid var(--blue);
     }
 
     .metric-picker {
@@ -524,10 +526,10 @@
 
     .pill-button {
       border: 1px solid var(--line);
-      background: #fff;
-      border-radius: 999px;
+      background: var(--blue-soft);
+      border-radius: 2px;
       padding: 12px 8px;
-      color: #344054;
+      color: var(--ink);
       font-weight: 850;
     }
 
@@ -706,9 +708,9 @@
   <main class="stage">
     <aside class="brief">
       <div class="brand-row">
-        <div class="app-icon"><img src="app-icon.svg" alt="模迹应用图标" /></div>
+        <div class="app-icon"><img src="app-icon.svg" alt="炼丹台应用图标" /></div>
         <div>
-          <h1>模迹</h1>
+          <h1>炼丹台</h1>
           <p class="subtitle">AI 训练监控 App · 面向 OpenMMLab、YOLO 和自定义 PyTorch 训练。</p>
         </div>
       </div>
@@ -741,7 +743,7 @@
         <section class="page active" id="overview">
           <div class="topbar">
             <div>
-              <div class="title">模迹</div>
+              <div class="title">炼丹台</div>
               <div class="run-name" id="runName">segmentation-exp-07</div>
               <div class="sync-row">
                 <div class="sync">实时同步中 · 20:58</div>
@@ -794,7 +796,7 @@
               <text class="axis-label" x="160" y="252">87</text>
               <text class="axis-label" x="286" y="252">174</text>
               <path class="series" d="M46 212 L54 160 L61 126 L70 76 L82 86 L93 71 L104 79 L118 67 L130 74 L143 63 L155 70 L168 62 L181 66 L195 59 L208 63 L222 60 L236 62 L250 58 L264 61 L278 56 L294 57 L308 54" />
-              <circle class="dot" cx="308" cy="54" r="4" />
+              <rect class="dot" x="304" y="50" width="8" height="8" />
             </svg>
           </div>
 
@@ -893,7 +895,7 @@
             <div class="settings-row"><div><b>通知栏训练状态</b><span>Epoch、最佳指标和 ETA</span></div><div class="toggle"></div></div>
           </div>
           <div class="card">
-            <div class="settings-row"><div><b>关于我们</b><span>模迹 v0.8.0 · 作者 Zephyer · 项目主页与反馈渠道</span></div></div>
+            <div class="settings-row"><div><b>关于我们</b><span>炼丹台 v0.8.0 · 作者 Zephyer · 项目主页与反馈渠道</span></div></div>
             <div class="settings-row"><div><b>隐私说明</b><span>不采集通讯录、定位、相册；只连接用户配置的训练后端。</span></div></div>
           </div>
         </section>

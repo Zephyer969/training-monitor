@@ -1,0 +1,79 @@
+{
+  "character": "mentor",
+  "role": "permanent-main-alchemist",
+  "status": "approved-v3-face-locked",
+  "identity_anchor": "mentor-photo-redesign-v3.png",
+  "runtime_asset": "server/alchemy_assets/mentor-actions-v7-coherent-no-fan.png",
+  "runtime_assets": [
+    "server/alchemy_assets/mentor-actions-v7-coherent-no-fan.png"
+  ],
+  "fallback_asset": "server/alchemy_assets/mentor-approved.png",
+  "identity_policy": "V7 is derived from the approved V3 reference, retaining the narrow face, glasses, hair and robe. The large waist-high cauldron is the focal prop. Runtime never distorts facial aspect ratio. Generated frame identity is visually checked, not claimed pixel-identical.",
+  "action_sheet_status": "v7-three-action-12-frame-runtime",
+  "runtime_grid": {"columns": 4, "rows": 4, "cell_width": 384, "cell_height": 512},
+  "runtime_active_frame_indices": [0, 2, 3, 4, 6, 7, 8, 9, 10, 11],
+  "runtime_sequence": [0, 2, 3, 0, 4, 6, 7, 4, 8, 9, 10, 11],
+  "runtime_frame_hold_ticks": 4,
+  "runtime_frames": [
+    "stir-center", "stir-deep", "stir-return",
+    "reach-potion", "pour-potion", "return-from-potion",
+    "raise-herbs", "sprinkle-herbs", "herb-mix", "return-to-stir"
+  ],
+  "excluded_runtime_frames": [
+    {"indices": [1, 5], "reason": "generated transition cells were smaller than the common mentor/cauldron scale"},
+    {"indices": [12, 13, 14, 15], "reason": "fourth sample action removed from the runtime"}
+  ],
+  "retired_assets": [
+    {
+      "file": "server/alchemy_assets/mentor-actions-v6-fan-fire.png",
+      "columns": 2,
+      "rows": 2,
+      "status": "retired-no-runtime",
+      "reason": "fan action removed by design"
+    },
+    {
+      "file": "server/alchemy_assets/mentor-actions-v6-ladle-inspect.png",
+      "columns": 2,
+      "rows": 2,
+      "status": "retired-no-runtime",
+      "reason": "replaced by the coherent v7 sequence"
+    }
+  ],
+  "rejected_state_sheet": {
+    "file": "mentor-state-sprite-sheet.png",
+    "columns": 2,
+    "rows": 2,
+    "source_width": 1024,
+    "source_height": 1536,
+    "cell_width": 512,
+    "cell_height": 768,
+    "status": "rejected-identity-drift-do-not-use"
+  },
+  "legacy_sheet": {
+    "file": "mentor-actions-sprite-sheet.png",
+    "columns": 4,
+    "rows": 2,
+    "source_width": 1536,
+    "source_height": 1024,
+    "cell_width": 384,
+    "cell_height": 512
+  },
+  "legacy_frames": [
+    {"index": 0, "name": "stir", "action": "搅拌炼丹", "phase": "training", "expression": "training-smile"},
+    {"index": 1, "name": "add_herbs", "action": "投放材料", "phase": "training", "expression": "training-smile"},
+    {"index": 2, "name": "read_scroll", "action": "读取丹方", "phase": "validating", "expression": "validating-focused-smile"},
+    {"index": 3, "name": "inspect_result", "action": "检查丹药结果", "phase": "stopped", "expression": "stopped-mildly-strict"}
+  ],
+  "legacy_phase_mapping": {
+    "preparing": 1,
+    "training": 0,
+    "validating": 2,
+    "saving": 2,
+    "finished": 2,
+    "stopped": 3,
+    "paused": 3,
+    "error": 3,
+    "idle": 2,
+    "stalled": 3
+  }
+}

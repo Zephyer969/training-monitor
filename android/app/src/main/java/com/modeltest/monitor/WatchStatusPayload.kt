@@ -94,10 +94,10 @@ object WatchStatusPayload {
     private fun title(status: TrainingStatus, progressPercent: Int?): String {
         val progress = progressPercent?.let { " $it%" } ?: ""
         return when (status.status) {
-            "training" -> "模迹 训练中$progress"
-            "finished" -> "模迹 训练完成$progress"
-            "error" -> "模迹 训练异常"
-            else -> "模迹 等待数据"
+            "training" -> "炼丹台 训练中$progress"
+            "finished" -> "炼丹台 训练完成$progress"
+            "error" -> "炼丹台 训练异常"
+            else -> "炼丹台 等待数据"
         }
     }
 

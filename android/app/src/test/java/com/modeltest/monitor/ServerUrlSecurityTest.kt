@@ -20,6 +20,7 @@ class ServerUrlSecurityTest {
             "http://localhost:6006",
             "http://training-server:6006",
             "http://monitor.local:6006",
+            "http://100.100.12.8:8765",
             "http://[fd00::1]:6006",
         )
         urls.forEach { url -> assertNull(url, serverUrlValidationError(url)) }

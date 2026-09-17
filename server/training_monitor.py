@@ -44,14 +44,25 @@ class TrainingMonitor:
         metrics: Optional[Dict[str, float]] = None,
         loss: Optional[float] = None,
         eta_seconds: Optional[int] = None,
+        phase: str = "training",
+        message: Optional[str] = None,
         status: str = "training",
+        step: Optional[int] = None,
+        total_steps: Optional[int] = None,
     ) -> dict:
         payload = {
             "epoch": epoch,
             "total_epochs": total_epochs,
             "metric_name": metric_name,
+            "phase": phase,
             "status": status,
         }
+        if message is not None:
+            payload["message"] = str(message)
+        if step is not None:
+            payload["step"] = int(step)
+        if total_steps is not None:
+            payload["total_steps"] = int(total_steps)
         if iou is not None:
             payload["iou"] = float(iou)
         if metrics is not None:
@@ -82,7 +93,11 @@ class TrainingMonitor:
         metrics: Optional[Dict[str, float]] = None,
         loss: Optional[float] = None,
         eta_seconds: Optional[int] = None,
+        phase: str = "training",
+        message: Optional[str] = None,
         status: str = "training",
+        step: Optional[int] = None,
+        total_steps: Optional[int] = None,
     ) -> dict:
         payload = self.build_payload(
             run_id=run_id,
@@ -95,7 +110,11 @@ class TrainingMonitor:
             metrics=metrics,
             loss=loss,
             eta_seconds=eta_seconds,
+            phase=phase,
+            message=message,
             status=status,
+            step=step,
+            total_steps=total_steps,
         )
 
         response = requests.post(

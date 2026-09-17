@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.TrainingMonitor" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="Theme.TrainingMonitor" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:statusBarColor">#F7F8FA</item>
-        <item name="android:navigationBarColor">#FFFFFF</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">#020F18</item>
+        <item name="android:navigationBarColor">#020F18</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

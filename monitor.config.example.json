@@ -1,0 +1,13 @@
+{
+  "ssh": "user@your-training-server",
+  "remote_python": "auto",
+  "interval": 2,
+  "log_roots": [],
+  "names_file": "monitor.names.json",
+  "local_bind": "0.0.0.0",
+  "local_port": 8765,
+  "local_token": "",
+  "local_token_file": "monitor.local.token",
+  "cloudflare_enabled": false,
+  "cloudflared_path": ""
+}

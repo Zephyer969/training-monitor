@@ -1,0 +1,6 @@
+Built-in image generation, identity-preserving edit of server/alchemy_assets/mentor-approved.png.
+4 columns x 2 rows: four stirring poses, raising herb vial, pouring herbs, inspecting potion, resting.
+Keep narrow face, rectangular glasses, short hair and navy/gold robe unchanged; animate arms and props.
+Follow-up extraction: preserve all characters, remove backdrop to transparent alpha.
+Runtime asset: server/alchemy_assets/mentor-actions-v4.png (1024x1536 RGBA, 8 cells).
+Display uses nearest-neighbor scaling with preserved aspect ratio; active actions cycle automatically.

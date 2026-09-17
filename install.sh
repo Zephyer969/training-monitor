@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 
-REPO_URL="${TRAINING_MONITOR_REPO:-https://github.com/ZephYer8/training-monitor}"
+REPO_URL="${TRAINING_MONITOR_REPO:-https://github.com/Zephyer969/training-monitor}"
 REF="${TRAINING_MONITOR_REF:-main}"
 SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" 2>/dev/null && pwd || true)"

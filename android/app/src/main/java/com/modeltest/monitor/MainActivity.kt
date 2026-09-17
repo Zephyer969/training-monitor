@@ -28,6 +28,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -58,7 +59,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,6 +75,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -81,6 +84,8 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -108,6 +113,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 
 class MainActivity : ComponentActivity() {
@@ -277,6 +283,17 @@ data class HistoryPoint(
 )
 
 
+data class GpuSnapshot(
+    val id: String,
+    val name: String = "",
+    val utilizationPercent: Double? = null,
+    val temperatureC: Double? = null,
+    val powerW: Double? = null,
+    val memoryUsedMib: Double? = null,
+    val memoryTotalMib: Double? = null,
+)
+
+
 data class TrainingStatus(
     val runId: String? = null,
     val status: String = "idle",
@@ -292,6 +309,11 @@ data class TrainingStatus(
     val history: List<HistoryPoint> = emptyList(),
     val availableMetrics: List<String> = emptyList(),
     val runs: List<TrainingStatus> = emptyList(),
+    val gpus: List<GpuSnapshot> = emptyList(),
+    val source: String = "",
+    val desktopOnline: Boolean = true,
+    val desktopError: String = "",
+    val desktopLastReceived: String = "",
 ) {
     val progress: Float
         get() = if (totalEpochs > 0) {
@@ -344,44 +366,80 @@ data class TrainingStatus(
 }
 
 
-private val BrandBlue = Color(0xFF155EEF)
-private val BrandGreen = Color(0xFF12B76A)
-private val Ink = Color(0xFF101828)
-private val MutedInk = Color(0xFF667085)
-private val AppBackground = Color(0xFFF7F9FC)
-private val Hairline = Color(0xFFE4E7EC)
-private val SoftBlue = Color(0xFFEFF4FF)
+private val PixelBackground = Color(0xFF020F18)
+private val PixelPanel = Color(0xFF061923)
+private val PixelPanelRaised = Color(0xFF0A2638)
+private val PixelField = Color(0xFF071F2D)
+private val PixelText = Color(0xFF9ED6FF)
+private val PixelMuted = Color(0xFF648097)
+private val PixelBorder = Color(0xFF287DA0)
+private val PixelBorderDim = Color(0xFF153B4C)
+private val PixelGrid = Color(0xFF0B2636)
+private val PixelCyan = Color(0xFF48E5FA)
+private val PixelGreen = Color(0xFF21EFB0)
+private val PixelYellow = Color(0xFFFFCB57)
+private val PixelPurple = Color(0xFF9283FF)
+private val PixelRed = Color(0xFFFF557D)
 
-private val AppColors = lightColorScheme(
-    primary = BrandBlue,
-    secondary = BrandGreen,
-    tertiary = Color(0xFFF79009),
-    background = AppBackground,
-    surface = Color.White,
-    surfaceVariant = Color(0xFFF2F4F7),
-    onSurface = Ink,
-    onSurfaceVariant = MutedInk,
-    outline = Color(0xFFD0D5DD),
-    error = Color(0xFFD92D20),
+private val BrandBlue = PixelCyan
+private val BrandGreen = PixelGreen
+private val Ink = PixelText
+private val MutedInk = PixelMuted
+private val AppBackground = PixelBackground
+private val Hairline = PixelBorderDim
+private val SoftBlue = Color(0xFF0D3044)
+private val PixelFont = FontFamily.Monospace
+
+private val PixelTypography = Typography().let { base ->
+    base.copy(
+        displayLarge = base.displayLarge.copy(fontFamily = PixelFont),
+        displayMedium = base.displayMedium.copy(fontFamily = PixelFont),
+        displaySmall = base.displaySmall.copy(fontFamily = PixelFont),
+        headlineLarge = base.headlineLarge.copy(fontFamily = PixelFont),
+        headlineMedium = base.headlineMedium.copy(fontFamily = PixelFont),
+        headlineSmall = base.headlineSmall.copy(fontFamily = PixelFont),
+        titleLarge = base.titleLarge.copy(fontFamily = PixelFont),
+        titleMedium = base.titleMedium.copy(fontFamily = PixelFont),
+        titleSmall = base.titleSmall.copy(fontFamily = PixelFont),
+        bodyLarge = base.bodyLarge.copy(fontFamily = PixelFont),
+        bodyMedium = base.bodyMedium.copy(fontFamily = PixelFont),
+        bodySmall = base.bodySmall.copy(fontFamily = PixelFont),
+        labelLarge = base.labelLarge.copy(fontFamily = PixelFont),
+        labelMedium = base.labelMedium.copy(fontFamily = PixelFont),
+        labelSmall = base.labelSmall.copy(fontFamily = PixelFont),
+    )
+}
+
+private val AppColors = darkColorScheme(
+    primary = PixelCyan,
+    secondary = PixelGreen,
+    tertiary = PixelYellow,
+    background = PixelBackground,
+    surface = PixelPanel,
+    surfaceVariant = PixelPanelRaised,
+    onSurface = PixelText,
+    onSurfaceVariant = PixelMuted,
+    outline = PixelBorder,
+    error = PixelRed,
 )
 
 private val ChartColors = listOf(
-    BrandBlue,
-    BrandGreen,
-    Color(0xFFF79009),
-    Color(0xFFF04438),
-    Color(0xFF06AED4),
-    Color(0xFF7A5AF8),
+    PixelCyan,
+    PixelGreen,
+    PixelYellow,
+    PixelRed,
+    Color(0xFF5CC8FF),
+    PixelPurple,
 )
 
 
 private fun glassPanelColor(glassStyle: Boolean): Color {
-    return if (glassStyle) Color(0xE8FFFFFF) else Color.White
+    return if (glassStyle) PixelPanelRaised else PixelPanel
 }
 
 
 private fun glassFieldColor(glassStyle: Boolean): Color {
-    return if (glassStyle) Color(0xA8FFFFFF) else Color.White
+    return if (glassStyle) PixelPanelRaised else PixelField
 }
 
 
@@ -392,8 +450,8 @@ private fun Modifier.glassMaterial(glassStyle: Boolean, radius: Dp): Modifier {
         drawRoundRect(
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.22f),
-                    Color.White.copy(alpha = 0.06f),
+                    PixelCyan.copy(alpha = 0.08f),
+                    PixelCyan.copy(alpha = 0.02f),
                     Color.Transparent,
                 ),
                 startY = 0f,
@@ -405,9 +463,9 @@ private fun Modifier.glassMaterial(glassStyle: Boolean, radius: Dp): Modifier {
         drawRoundRect(
             brush = Brush.linearGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.76f),
-                    Color.White.copy(alpha = 0.18f),
-                    Color(0xFF93C5FD).copy(alpha = 0.18f),
+                    PixelCyan.copy(alpha = 0.70f),
+                    PixelCyan.copy(alpha = 0.18f),
+                    PixelGreen.copy(alpha = 0.18f),
                 ),
                 start = Offset.Zero,
                 end = Offset(size.width, size.height),
@@ -421,7 +479,7 @@ private fun Modifier.glassMaterial(glassStyle: Boolean, radius: Dp): Modifier {
 
 @Composable
 fun TrainingMonitorApp() {
-    MaterialTheme(colorScheme = AppColors) {
+    MaterialTheme(colorScheme = AppColors, typography = PixelTypography) {
         MonitorRoot()
     }
 }
@@ -451,7 +509,9 @@ private fun MonitorRoot() {
     var huaweiWatchSyncEnabled by rememberSaveable { mutableStateOf(loadHuaweiWatchSyncEnabled(context)) }
     var privacyAccepted by rememberSaveable { mutableStateOf(loadPrivacyAccepted(context)) }
     var uiStyle by rememberSaveable { mutableStateOf(loadUiStyle(context)) }
-    var status by remember { mutableStateOf(loadCachedStatus(context) ?: TrainingStatus()) }
+    var status by remember {
+        mutableStateOf(loadCachedStatus(context)?.takeIf { it.source == "desktop-local" } ?: TrainingStatus())
+    }
     var selectedGpuId by rememberSaveable { mutableStateOf(AllGpuFilter) }
     var hasFreshStatus by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -467,7 +527,7 @@ private fun MonitorRoot() {
             if (pendingHuaweiWatchEnable) {
                 huaweiWatchSyncEnabled = true
                 saveHuaweiWatchSyncEnabled(context, true)
-                testMessage = "华为手表同步已开启，请在华为运动健康里允许“模迹”通知同步到 FIT 4"
+                testMessage = "华为手表同步已开启，请在华为运动健康里允许“炼丹台”通知同步到 FIT 4"
             } else {
                 testMessage = "通知已开启，训练中才会显示到通知栏"
             }
@@ -499,7 +559,7 @@ private fun MonitorRoot() {
         isRefreshing = true
         try {
             val raw = fetchStatusJson(client, normalizedUrl, token)
-            val nextStatus = parseTrainingStatus(JSONObject(raw))
+            val nextStatus = parseLocalPanelStatus(raw)
             status = nextStatus
             hasFreshStatus = true
             saveCachedStatus(context, raw)
@@ -510,7 +570,11 @@ private fun MonitorRoot() {
                 maybeShowFinishedTrainingNotification(context, nextStatus)
             }
             syncTrainingNotificationService(context, nextStatus, notificationEnabled && privacyAccepted)
-            error = null
+            error = if (nextStatus.desktopOnline) {
+                null
+            } else {
+                nextStatus.desktopError.ifBlank { "电脑端采集器离线，当前显示最后一次快照" }
+            }
         } catch (exc: Exception) {
             error = exc.message ?: "连接失败"
             hasFreshStatus = false
@@ -645,7 +709,7 @@ private fun MonitorRoot() {
                                     saveNotificationEnabled(context, true)
                                     saveHuaweiWatchSyncEnabled(context, true)
                                     syncTrainingNotificationService(context, status, privacyAccepted)
-                                    testMessage = "华为手表同步已开启，请在华为运动健康里允许“模迹”通知同步到 FIT 4"
+                                    testMessage = "华为手表同步已开启，请在华为运动健康里允许“炼丹台”通知同步到 FIT 4"
                                 } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                     pendingHuaweiWatchEnable = true
                                     notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -691,7 +755,7 @@ private fun MonitorRoot() {
                         onSave = save@{
                             val nextUrl = normalizeBaseUrl(draftUrl)
                             if (nextUrl.isBlank()) {
-                                testMessage = "请先填写后端地址"
+                                testMessage = "请先填写本地面板地址"
                                 return@save
                             }
                             serverUrlValidationError(nextUrl)?.let {
@@ -699,7 +763,7 @@ private fun MonitorRoot() {
                                 return@save
                             }
                             if (draftToken.isBlank()) {
-                                testMessage = "请填写访问 Token"
+                                testMessage = "请填写本地同步 Token"
                                 return@save
                             }
                             savedUrl = nextUrl
@@ -717,7 +781,7 @@ private fun MonitorRoot() {
                             scope.launch {
                                 val testUrl = normalizeBaseUrl(draftUrl)
                                 if (testUrl.isBlank()) {
-                                    testMessage = "请先填写后端地址"
+                                    testMessage = "请先填写本地面板地址"
                                     return@launch
                                 }
                                 serverUrlValidationError(testUrl)?.let {
@@ -725,14 +789,14 @@ private fun MonitorRoot() {
                                     return@launch
                                 }
                                 if (draftToken.isBlank()) {
-                                    testMessage = "请填写访问 Token"
+                                    testMessage = "请填写本地同步 Token"
                                     return@launch
                                 }
                                 testMessage = "正在测试连接..."
                                 runCatching {
                                     val raw = fetchStatusJson(client, testUrl, draftToken.trim())
                                     saveCachedStatus(context, raw)
-                                    parseTrainingStatus(JSONObject(raw))
+                                    parseLocalPanelStatus(raw)
                                 }
                                     .onSuccess {
                                         status = it
@@ -774,30 +838,25 @@ private fun MonitorRoot() {
 
 @Composable
 private fun AppBackdrop(glassStyle: Boolean) {
-    val background = if (glassStyle) {
-        Brush.linearGradient(
-            colors = listOf(
-                Color(0xFFFBFCFE),
-                Color(0xFFEEF4FF),
-                Color(0xFFECFDF3),
-            ),
-            start = Offset.Zero,
-            end = Offset(900f, 1600f),
-        )
-    } else {
-        Brush.verticalGradient(
-            colors = listOf(
-                MaterialTheme.colorScheme.background,
-                Color(0xFFF2F4F7),
-            ),
-        )
-    }
-
-    Spacer(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(background),
-    )
+            .background(PixelBackground),
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val grid = 32.dp.toPx()
+            var x = 0f
+            while (x < size.width) {
+                drawLine(PixelGrid, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
+                x += grid
+            }
+            var y = 0f
+            while (y < size.height) {
+                drawLine(PixelGrid, Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
+                y += grid
+            }
+        }
+    }
 }
 
 
@@ -832,20 +891,221 @@ private fun DashboardScreen(
         if (!hasTrainingData) {
             SetupPromptCard(error, glassStyle, onOpenSettings)
         } else {
-            GpuSelectorBar(
-                rootStatus = rootStatus,
-                selectedGpuId = selectedGpuId,
-                gpuOptions = gpuOptions,
-                glassStyle = glassStyle,
-                onGpuSelected = onGpuSelected,
-            )
+            if (rootStatus.runs.size > 1) {
+                RunOverviewCard(
+                    rootStatus = rootStatus,
+                    selectedGpuId = selectedGpuId,
+                    glassStyle = glassStyle,
+                    onGpuSelected = onGpuSelected,
+                )
+            }
             ProgressHeroCard(status, glassStyle)
-            MiniChartCard(status, visibleMetrics, glassStyle)
+            CoreMetricCharts(status, glassStyle)
             val primaryMetric = status.primaryMetric()
-            val secondaryMetrics = visibleMetrics.filterNot { it == primaryMetric }
+            val coreMetricNames = coreMetricNames(status)
+            val secondaryMetrics = visibleMetrics.filterNot { metric ->
+                metric == primaryMetric || coreMetricNames.any { it.equals(metric, ignoreCase = true) }
+            }
             if (secondaryMetrics.isNotEmpty()) {
                 MetricGrid(status, secondaryMetrics, glassStyle)
             }
+            if (gpuOptions.isNotEmpty()) {
+                Text(
+                    text = "GPU FILTER / 显卡筛选",
+                    color = PixelText,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                GpuSelectorBar(
+                    rootStatus = rootStatus,
+                    selectedGpuId = selectedGpuId,
+                    gpuOptions = gpuOptions,
+                    glassStyle = glassStyle,
+                    onGpuSelected = onGpuSelected,
+                )
+            }
+            GpuOverviewCard(rootStatus, glassStyle)
+        }
+    }
+}
+
+
+@Composable
+private fun RunOverviewCard(
+    rootStatus: TrainingStatus,
+    selectedGpuId: String,
+    glassStyle: Boolean,
+    onGpuSelected: (String) -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(2.dp),
+        color = glassPanelColor(glassStyle),
+        border = BorderStroke(1.dp, if (glassStyle) PixelCyan.copy(alpha = 0.70f) else PixelBorder),
+        modifier = Modifier
+            .fillMaxWidth()
+            .glassMaterial(glassStyle, 2.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                "RUNS / 训练任务",
+                color = PixelText,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleSmall,
+            )
+            rootStatus.runs.forEachIndexed { index, run ->
+                val accent = statusAccent(run.status)
+                val selected = run.gpuIds.any { it == selectedGpuId }
+                val gpuText = run.gpuIds.joinToString(", ") { "GPU $it" }.ifBlank { "未绑定 GPU" }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            if (selected) PixelPanelRaised else Color.Transparent,
+                            RoundedCornerShape(1.dp),
+                        )
+                        .clickable {
+                            run.gpuIds.firstOrNull()?.let(onGpuSelected)
+                        }
+                        .padding(horizontal = 6.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .background(accent, RoundedCornerShape(1.dp)),
+                    )
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = "%02d  %s".format(Locale.US, index + 1, run.runDisplayName()),
+                                color = PixelText,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(statusText(run.status), color = accent, fontWeight = FontWeight.Bold)
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(gpuText, color = PixelMuted, style = MaterialTheme.typography.labelSmall)
+                            Text(
+                                "L ${formatMetric(run.latestMetricValue("loss"))}  m ${formatMetric(run.latestMiou())}",
+                                color = PixelGreen,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                        LinearProgressIndicator(
+                            progress = { run.progress },
+                            color = accent,
+                            trackColor = PixelGrid,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp),
+                        )
+                    }
+                    Text(
+                        text = if (run.totalEpochs > 0) "${run.epoch}/${run.totalEpochs}" else "--",
+                        color = accent,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+                if (index < rootStatus.runs.lastIndex) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(PixelBorderDim),
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun GpuOverviewCard(rootStatus: TrainingStatus, glassStyle: Boolean) {
+    if (rootStatus.gpus.isEmpty()) return
+    Surface(
+        shape = RoundedCornerShape(2.dp),
+        color = glassPanelColor(glassStyle),
+        border = BorderStroke(1.dp, if (glassStyle) PixelCyan.copy(alpha = 0.70f) else PixelBorder),
+        modifier = Modifier
+            .fillMaxWidth()
+            .glassMaterial(glassStyle, 2.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                "GPU STATUS / 显卡状态",
+                color = PixelText,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleSmall,
+            )
+            rootStatus.gpus.chunked(2).forEach { rowGpus ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    rowGpus.forEach { gpu ->
+                        GpuStatusTile(gpu, glassStyle, Modifier.weight(1f))
+                    }
+                    if (rowGpus.size == 1) Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun GpuStatusTile(gpu: GpuSnapshot, glassStyle: Boolean, modifier: Modifier = Modifier) {
+    val utilization = ((gpu.utilizationPercent ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f)
+    Surface(
+        shape = RoundedCornerShape(1.dp),
+        color = if (glassStyle) PixelPanelRaised else PixelField,
+        border = BorderStroke(1.dp, PixelBorderDim),
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier.padding(9.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("GPU ${gpu.id}", color = PixelCyan, fontWeight = FontWeight.Bold)
+                Text(formatGpuPercent(gpu.utilizationPercent), color = PixelGreen, fontWeight = FontWeight.Bold)
+            }
+            LinearProgressIndicator(
+                progress = { utilization },
+                color = PixelGreen,
+                trackColor = PixelGrid,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp),
+            )
+            Text(
+                text = "${formatMemory(gpu.memoryUsedMib, gpu.memoryTotalMib)}  ${formatTemperature(gpu.temperatureC)}",
+                color = PixelMuted,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -854,23 +1114,25 @@ private fun DashboardScreen(
 @Composable
 private fun SetupPromptCard(error: String?, glassStyle: Boolean, onOpenSettings: () -> Unit) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(2.dp),
         color = glassPanelColor(glassStyle),
-        border = BorderStroke(1.dp, if (glassStyle) Color(0xCCFFFFFF) else Hairline),
-        modifier = Modifier.fillMaxWidth(),
+        border = BorderStroke(1.dp, if (glassStyle) PixelCyan.copy(alpha = 0.70f) else PixelBorder),
+        modifier = Modifier
+            .fillMaxWidth()
+            .glassMaterial(glassStyle, 2.dp),
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
-                text = if (error == null) "连接训练服务器" else "暂时无法获取训练状态",
+                text = if (error == null) "连接本地面板" else "暂时无法获取训练状态",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = error ?: "填写服务器地址和访问 Token 后，训练进度、指标与趋势会显示在这里。",
-                color = if (error == null) MutedInk else Color(0xFFB42318),
+                text = error ?: "填写电脑面板地址和本地同步 Token 后，训练任务、显卡、指标与趋势会显示在这里。",
+                color = if (error == null) MutedInk else PixelRed,
             )
             Button(onClick = onOpenSettings, modifier = Modifier.fillMaxWidth()) {
                 Text(if (error == null) "开始配置" else "检查连接设置")
@@ -916,6 +1178,31 @@ private fun GpuSelectorBar(
 
 
 @Composable
+private fun PixelBrandMark(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val unit = (size.minDimension / 8f).coerceAtLeast(2f)
+
+        fun block(x: Int, y: Int, width: Int = 1, height: Int = 1, color: Color) {
+            drawRect(
+                color = color,
+                topLeft = Offset(x * unit, y * unit),
+                size = Size(width * unit, height * unit),
+            )
+        }
+
+        // Pixel monitor frame, chart trace, and a small alchemy spark.
+        block(1, 1, 6, 5, PixelCyan)
+        block(2, 2, 4, 3, PixelBackground)
+        block(2, 4, 1, 1, PixelGreen)
+        block(3, 3, 1, 1, PixelGreen)
+        block(4, 4, 1, 1, PixelGreen)
+        block(5, 2, 1, 1, PixelYellow)
+        block(3, 6, 2, 1, PixelCyan)
+        block(2, 7, 4, 1, PixelYellow)
+    }
+}
+
+@Composable
 private fun Header(
     status: TrainingStatus,
     error: String?,
@@ -928,11 +1215,26 @@ private fun Header(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "模迹",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.weight(1f),
+            ) {
+                PixelBrandMark(Modifier.size(28.dp))
+                Column {
+                    Text(
+                        text = "炼丹台_",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = PixelText,
+                    )
+                    Text(
+                        text = "TRAINING MONITOR",
+                        color = PixelCyan,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
             StatusPill(status = if (error == null) status.status else "error")
         }
         Text(
@@ -942,6 +1244,11 @@ private fun Header(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        Text(
+            text = "PIXEL PANEL · 电脑只读同步",
+            color = PixelCyan,
+            style = MaterialTheme.typography.labelSmall,
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -949,7 +1256,7 @@ private fun Header(
         ) {
             Text(
                 text = syncText(status, error, isRefreshing),
-                color = if (error == null) MutedInk else Color(0xFFB42318),
+                color = if (error == null) MutedInk else PixelRed,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -969,7 +1276,7 @@ private fun ProgressHeroCard(status: TrainingStatus, glassStyle: Boolean) {
     val current = primaryMetric?.let { status.latestMetricValue(it) }
     val best = primaryMetric?.let { status.bestMetrics[it] }
     val bestEpoch = primaryMetric?.let { status.bestEpochs[it] }
-    val progressTrackColor = if (glassStyle) Color(0x78BFDBFE) else Color(0xFFE0E7FF)
+    val progressTrackColor = PixelGrid
     val progressText = if (hasTotal) {
         "${(status.progress * 100).toInt()}%"
     } else {
@@ -984,13 +1291,13 @@ private fun ProgressHeroCard(status: TrainingStatus, glassStyle: Boolean) {
     val metricTitle = primaryMetric?.let { metricDisplayName(it) } ?: "Metric"
 
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(2.dp),
         color = glassPanelColor(glassStyle),
-        border = BorderStroke(1.dp, if (glassStyle) Color(0xCCFFFFFF) else Hairline),
+        border = BorderStroke(1.dp, if (glassStyle) PixelCyan.copy(alpha = 0.70f) else PixelBorder),
         shadowElevation = if (glassStyle) 3.dp else 0.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .glassMaterial(glassStyle, 12.dp),
+            .glassMaterial(glassStyle, 2.dp),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -1097,7 +1404,7 @@ private fun statusAccent(status: String): Color {
     return when (status) {
         "training" -> BrandBlue
         "finished" -> BrandGreen
-        "error" -> Color(0xFFD92D20)
+        "error" -> PixelRed
         else -> MutedInk
     }
 }
@@ -1153,9 +1460,9 @@ private fun MetricCard(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(2.dp),
         color = glassPanelColor(glassStyle),
-        border = BorderStroke(1.dp, if (glassStyle) Color(0xCCFFFFFF) else Hairline),
+        border = BorderStroke(1.dp, if (glassStyle) PixelCyan.copy(alpha = 0.70f) else PixelBorder),
         modifier = modifier,
     ) {
         Column(
@@ -1183,48 +1490,144 @@ private fun MetricCard(
 
 
 @Composable
-private fun MiniChartCard(status: TrainingStatus, visibleMetrics: List<String>, glassStyle: Boolean) {
-    val chartMetric = chartMetricsFor(status, visibleMetrics).firstOrNull { metric ->
-        status.history.count { it.metrics[metric] != null } >= 2
+private fun CoreMetricCharts(status: TrainingStatus, glassStyle: Boolean) {
+    val lossMetric = coreMetricNames(status).firstOrNull { it.equals("loss", ignoreCase = true) }
+    val miouMetric = coreMetricNames(status).firstOrNull { metric ->
+        metric.equals("mIoU", ignoreCase = true) || metric.equals("IoU", ignoreCase = true)
     }
 
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "TRAINING METRICS / 训练指标",
+            color = PixelText,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleSmall,
+        )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val twoColumns = maxWidth >= 600.dp
+            if (twoColumns) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    MetricTrendCard(
+                        title = "LOSS / 损失",
+                        metric = lossMetric,
+                        status = status,
+                        accent = PixelCyan,
+                        glassStyle = glassStyle,
+                        modifier = Modifier.weight(1f),
+                    )
+                    MetricTrendCard(
+                        title = "mIoU / 验证指标",
+                        metric = miouMetric,
+                        status = status,
+                        accent = PixelGreen,
+                        glassStyle = glassStyle,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    MetricTrendCard(
+                        title = "LOSS / 损失",
+                        metric = lossMetric,
+                        status = status,
+                        accent = PixelCyan,
+                        glassStyle = glassStyle,
+                    )
+                    MetricTrendCard(
+                        title = "mIoU / 验证指标",
+                        metric = miouMetric,
+                        status = status,
+                        accent = PixelGreen,
+                        glassStyle = glassStyle,
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun MetricTrendCard(
+    title: String,
+    metric: String?,
+    status: TrainingStatus,
+    accent: Color,
+    glassStyle: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val pointCount = metric?.let { key -> status.history.count { it.metrics[key] != null } } ?: 0
+    val hasChart = metric != null && pointCount >= 2
+
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(2.dp),
         color = glassPanelColor(glassStyle),
-        border = BorderStroke(1.dp, if (glassStyle) Color(0xCCFFFFFF) else Hairline),
-        modifier = Modifier.fillMaxWidth(),
+        border = BorderStroke(1.dp, if (glassStyle) accent.copy(alpha = 0.70f) else PixelBorder),
+        modifier = modifier
+            .fillMaxWidth()
+            .glassMaterial(glassStyle, 2.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("实时曲线", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                Text("${status.history.size} 条记录", color = MutedInk)
+                Text(title, color = accent, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                Text("$pointCount 点", color = PixelMuted, style = MaterialTheme.typography.labelSmall)
             }
 
-            if (chartMetric == null) {
-                Box(
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                OverviewStat(
+                    label = "当前",
+                    value = metric?.let { status.latestMetricValue(it) }.let(::formatMetric),
+                    modifier = Modifier.weight(1f),
+                )
+                OverviewStat(
+                    label = "最佳",
+                    value = metric?.let { status.bestMetrics[it] }.let(::formatMetric),
+                    hint = metric?.let { status.bestEpochs[it] }?.let { "第 $it 轮" },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            if (hasChart) {
+                MetricsChart(
+                    history = status.history,
+                    metrics = listOfNotNull(metric),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(170.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("至少同步 2 个 Epoch 后显示趋势", color = MutedInk)
-                }
+                    lineColors = listOf(accent),
+                )
+                ChartLegend(listOfNotNull(metric), colors = listOf(accent))
             } else {
-                MetricsChart(
-                    history = status.history,
-                    metrics = listOf(chartMetric),
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(190.dp),
-                )
-                ChartLegend(listOf(chartMetric))
+                        .height(132.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = if (metric == null) {
+                            "尚未发现该指标"
+                        } else {
+                            "至少同步 2 个 Epoch 后显示趋势"
+                        },
+                        color = MutedInk,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
     }
@@ -1284,10 +1687,12 @@ private fun ChartsScreen(
         } else {
             chartMetrics.forEach { metric ->
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(2.dp),
                     color = glassPanelColor(glassStyle),
-                    border = BorderStroke(1.dp, if (glassStyle) Color(0xCCFFFFFF) else Hairline),
-                    modifier = Modifier.fillMaxWidth(),
+                    border = BorderStroke(1.dp, if (glassStyle) PixelCyan.copy(alpha = 0.70f) else PixelBorder),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .glassMaterial(glassStyle, 2.dp),
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -1346,13 +1751,48 @@ private fun MetricsChart(
     history: List<HistoryPoint>,
     metrics: List<String>,
     modifier: Modifier = Modifier,
+    lineColors: List<Color> = ChartColors,
 ) {
     Canvas(modifier = modifier) {
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.rgb(107, 114, 128)
+        val pixel = 2.dp.toPx().coerceAtLeast(1f)
+        val textPaint = Paint().apply {
+            isAntiAlias = false
+            color = android.graphics.Color.rgb(100, 128, 151)
             textSize = 10.dp.toPx()
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
         }
+        drawRect(PixelField)
+
+        fun snap(value: Float): Float {
+            return (value / pixel).roundToInt() * pixel
+        }
+
+        fun dashed(start: Offset, end: Offset, color: Color, width: Float) {
+            val vertical = start.x == end.x
+            val length = if (vertical) abs(end.y - start.y) else abs(end.x - start.x)
+            val dash = 8.dp.toPx()
+            var cursor = 0f
+            while (cursor < length) {
+                val next = minOf(cursor + dash, length)
+                if (vertical) {
+                    drawLine(
+                        color,
+                        Offset(start.x, start.y + cursor),
+                        Offset(end.x, start.y + next),
+                        width,
+                    )
+                } else {
+                    drawLine(
+                        color,
+                        Offset(start.x + cursor, start.y),
+                        Offset(start.x + next, end.y),
+                        width,
+                    )
+                }
+                cursor += dash * 2
+            }
+        }
+
         val pointsByMetric = metrics.associateWith { metric ->
             history.mapNotNull { point ->
                 point.metrics[metric]?.let { point.epoch to it }
@@ -1379,12 +1819,7 @@ private fun MetricsChart(
         repeat(4) { index ->
             val y = top + (bottom - top) * index / 3f
             val value = maxValue - (maxValue - minValue) * index / 3.0
-            drawLine(
-                color = Color(0xFFE5E7EB),
-                start = Offset(left, y),
-                end = Offset(right, y),
-                strokeWidth = 1.dp.toPx(),
-            )
+            dashed(Offset(left, y), Offset(right, y), PixelGrid, 1.dp.toPx())
             drawContext.canvas.nativeCanvas.drawText(
                 compactNumber(value),
                 4.dp.toPx(),
@@ -1393,8 +1828,19 @@ private fun MetricsChart(
             )
         }
 
-        drawLine(Color(0xFFD1D5DB), Offset(left, top), Offset(left, bottom), 1.dp.toPx())
-        drawLine(Color(0xFFD1D5DB), Offset(left, bottom), Offset(right, bottom), 1.dp.toPx())
+        repeat(6) { index ->
+            val x = left + (right - left) * index / 5f
+            dashed(Offset(x, top), Offset(x, bottom), PixelGrid, 1.dp.toPx())
+        }
+
+        drawLine(PixelBorder, Offset(left, top), Offset(left, bottom), 1.dp.toPx())
+        drawLine(PixelBorder, Offset(left, bottom), Offset(right, bottom), 1.dp.toPx())
+        drawRect(
+            color = PixelBorder,
+            topLeft = Offset(left, top),
+            size = Size(right - left, bottom - top),
+            style = Stroke(width = 1.dp.toPx()),
+        )
         val midEpoch = minEpoch + epochSpan / 2
         listOf(minEpoch, midEpoch, maxEpoch).distinct().forEach { epoch ->
             val x = left + (right - left) * ((epoch - minEpoch).toFloat() / epochSpan.toFloat())
@@ -1413,9 +1859,9 @@ private fun MetricsChart(
             val path = Path()
 
             points.forEachIndexed { pointIndex, (epoch, value) ->
-                val x = left + (right - left) * ((epoch - minEpoch).toFloat() / epochSpan.toFloat())
+                val x = snap(left + (right - left) * ((epoch - minEpoch).toFloat() / epochSpan.toFloat()))
                 val normalized = ((value - minValue) / valueSpan).toFloat().coerceIn(0f, 1f)
-                val y = bottom - (bottom - top) * normalized
+                val y = snap(bottom - (bottom - top) * normalized)
                 if (pointIndex == 0) {
                     path.moveTo(x, y)
                 } else {
@@ -1425,23 +1871,23 @@ private fun MetricsChart(
 
             drawPath(
                 path = path,
-                color = ChartColors[index % ChartColors.size],
+                color = lineColors[index % lineColors.size],
                 style = Stroke(
-                    width = if (points.size > 120) 1.6.dp.toPx() else 2.dp.toPx(),
-                    cap = StrokeCap.Round,
-                    join = StrokeJoin.Round,
+                    width = if (points.size > 120) 2.dp.toPx() else 3.dp.toPx(),
+                    cap = StrokeCap.Butt,
+                    join = StrokeJoin.Miter,
                 ),
             )
             if (points.size <= 240) {
-                val pointRadius = if (points.size > 120) 1.1.dp.toPx() else 1.8.dp.toPx()
+                val marker = if (points.size > 120) 2.dp.toPx() else 4.dp.toPx()
                 points.forEach { (epoch, value) ->
-                    val x = left + (right - left) * ((epoch - minEpoch).toFloat() / epochSpan.toFloat())
+                    val x = snap(left + (right - left) * ((epoch - minEpoch).toFloat() / epochSpan.toFloat()))
                     val normalized = ((value - minValue) / valueSpan).toFloat().coerceIn(0f, 1f)
-                    val y = bottom - (bottom - top) * normalized
-                    drawCircle(
-                        color = ChartColors[index % ChartColors.size],
-                        radius = pointRadius,
-                        center = Offset(x, y),
+                    val y = snap(bottom - (bottom - top) * normalized)
+                    drawRect(
+                        color = lineColors[index % lineColors.size],
+                        topLeft = Offset(x - marker / 2f, y - marker / 2f),
+                        size = Size(marker, marker),
                     )
                 }
             }
@@ -1451,7 +1897,7 @@ private fun MetricsChart(
 
 
 @Composable
-private fun ChartLegend(metrics: List<String>) {
+private fun ChartLegend(metrics: List<String>, colors: List<Color> = ChartColors) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         metrics.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1462,8 +1908,8 @@ private fun ChartLegend(metrics: List<String>) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Surface(
-                            color = ChartColors[realIndex % ChartColors.size],
-                            shape = RoundedCornerShape(50),
+                            color = colors[realIndex % colors.size],
+                            shape = RoundedCornerShape(1.dp),
                             modifier = Modifier.size(10.dp),
                             content = {},
                         )
@@ -1528,17 +1974,17 @@ private fun SettingsScreen(
         )
         Text("连接、显示、提醒与本地数据。", color = MutedInk)
 
-        SettingsCard(title = "训练服务器", glassStyle = glassStyle) {
+        SettingsCard(title = "本地电脑面板", glassStyle = glassStyle) {
             MonitorTextField(
                 value = draftUrl,
                 onValueChange = onUrlChange,
-                label = { Text("后端地址") },
-                placeholder = { Text("10.0.0.2:6006 或 https://example.com") },
+                label = { Text("本地面板地址") },
+                placeholder = { Text("192.168.1.20:8765") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 glassStyle = glassStyle,
             )
             Text(
-                "支持局域网 IP、域名或 HTTPS；不写协议时默认使用 http://。",
+                "从电脑端像素面板的“手机同步”按钮获取。手机只连接电脑，不直接连接训练服务器。",
                 color = MutedInk,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -1546,21 +1992,27 @@ private fun SettingsScreen(
             if (draftUrlError != null) {
                 Text(
                     draftUrlError,
-                    color = Color(0xFFB42318),
+                    color = PixelRed,
                     style = MaterialTheme.typography.bodySmall,
                 )
             } else if (normalizeBaseUrl(draftUrl).startsWith("http://")) {
                 Text(
-                    "局域网 HTTP 已允许；公网地址必须使用 HTTPS。",
-                    color = Color(0xFFB54708),
+                    "局域网 HTTP 已允许；人在外面请通过 Tailscale/WireGuard 连接电脑。",
+                    color = PixelYellow,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            } else if (normalizeBaseUrl(draftUrl).startsWith("https://")) {
+                Text(
+                    "HTTPS 外网地址可直接使用；电脑端面板和公网隧道需要保持运行。",
+                    color = PixelGreen,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
             MonitorTextField(
                 value = draftToken,
                 onValueChange = onTokenChange,
-                label = { Text("访问 Token") },
-                placeholder = { Text("从 training-monitor connection 获取") },
+                label = { Text("本地同步 Token") },
+                placeholder = { Text("从电脑端“手机同步”复制") },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 glassStyle = glassStyle,
@@ -1584,7 +2036,7 @@ private fun SettingsScreen(
         SettingsCard(title = "显示指标", glassStyle = glassStyle) {
             Text("勾选后会同步用于总览、趋势和通知。", color = MutedInk)
             if (metricOptions.isEmpty()) {
-                Text("连接训练服务器后，这里会出现检测到的指标。", color = MutedInk)
+                Text("连接本地电脑面板后，这里会出现检测到的指标。", color = MutedInk)
             } else {
                 metricOptions.forEach { metric ->
                     MetricOptionRow(
@@ -1676,7 +2128,7 @@ private fun SettingsScreen(
                 )
             }
             Text(
-                "需要在华为运动健康中允许“模迹”通知同步到 FIT 4。",
+                "需要在华为运动健康中允许“炼丹台”通知同步到 FIT 4。",
                 color = MutedInk,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -1684,11 +2136,11 @@ private fun SettingsScreen(
 
         SettingsCard(title = "隐私与权限", glassStyle = glassStyle) {
             Text(
-                "仅使用网络访问你配置的训练监控后端；开启通知后会使用通知和前台服务权限，用于通知栏、锁屏训练状态和训练完成提醒。",
+                "本应用只连接本地电脑的只读同步接口；电脑负责通过 SSH 读取训练服务器。开启通知后会使用通知和前台服务权限，用于通知栏、锁屏训练状态和训练完成提醒。",
                 color = MutedInk,
             )
             Text(
-                "本机保存内容包括服务器地址、加密 Token、刷新间隔、勾选指标和最后一次训练状态缓存；不读取通讯录、定位、相册、麦克风或摄像头。",
+                "本机保存内容包括本地面板地址、加密 Token、刷新间隔、勾选指标和最后一次训练状态缓存；不读取通讯录、定位、相册、麦克风或摄像头。",
                 color = MutedInk,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1722,13 +2174,13 @@ private fun SettingsScreen(
         }
 
         SettingsCard(title = "关于我们", glassStyle = glassStyle) {
-            Text("模迹 ${appVersionText(context)}", fontWeight = FontWeight.SemiBold)
+            Text("炼丹台 ${appVersionText(context)}", fontWeight = FontWeight.SemiBold)
             Text("作者：Zephyer", color = MutedInk)
             Text("应用标识：${context.packageName}", color = MutedInk)
             Text("项目主页：github.com/ZephYer8/training-monitor", color = MutedInk)
             Text("反馈渠道：GitHub Issues 或应用市场反馈入口", color = MutedInk)
             Text(
-                "本应用只连接你配置的训练监控后端，Token 加密保存在本机，不采集通讯录、定位、相册等个人信息。",
+                "本应用只连接你配置的本地电脑只读接口，Token 加密保存在本机，不采集通讯录、定位、相册等个人信息。",
                 color = MutedInk,
             )
             Text(
@@ -1754,9 +2206,9 @@ private fun PrivacyConsentDialog(
         title = { Text("隐私与权限提示") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("欢迎使用模迹。继续使用前，请先了解本应用如何处理数据。")
-                Text("本应用只连接你配置的训练监控后端，用于显示训练进度、指标曲线、Best 指标、ETA 和训练完成提醒。")
-                Text("本机保存服务器地址、加密 Token、刷新间隔、勾选指标和最后一次训练状态缓存。")
+                Text("欢迎使用炼丹台。继续使用前，请先了解本应用如何处理数据。")
+                Text("本应用只连接你配置的本地电脑只读同步接口，用于显示训练进度、指标曲线、Best 指标、ETA 和训练完成提醒。")
+                Text("本机保存本地面板地址、加密 Token、刷新间隔、勾选指标和最后一次训练状态缓存。")
                 Text("应用仅使用网络、通知和前台服务权限；不读取通讯录、定位、相册、麦克风或摄像头，不接入广告 SDK。")
                 Text("你可以在设置页随时清除训练缓存和本机 Token。")
             }
@@ -1788,15 +2240,15 @@ private fun PrivacyPolicyDialog(onDismiss: () -> Unit) {
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("应用名称：模迹", fontWeight = FontWeight.SemiBold)
+                Text("应用名称：炼丹台", fontWeight = FontWeight.SemiBold)
                 Text("作者：Zephyer")
                 Text("包名：com.modeltest.monitor")
                 Text("项目主页：github.com/ZephYer8/training-monitor")
                 Text("反馈渠道：GitHub Issues 或应用市场反馈入口")
                 Text("完整政策：$PrivacyPolicyUrl")
-                Text("功能用途：连接你配置的训练监控后端，展示训练进度、指标曲线、最佳指标、预计剩余时间和训练完成提醒。")
-                Text("收集的信息：服务器地址、访问 Token、刷新间隔、勾选指标和最后一次训练状态缓存。")
-                Text("权限使用：网络权限用于访问训练监控后端；通知权限和前台服务用于通知栏、锁屏训练状态和完成提醒。")
+                Text("功能用途：连接你配置的本地电脑只读同步接口，展示训练进度、指标曲线、最佳指标、预计剩余时间和训练完成提醒。")
+                Text("收集的信息：本地面板地址、本地同步 Token、刷新间隔、勾选指标和最后一次训练状态缓存。")
+                Text("权限使用：网络权限用于访问本地电脑面板；通知权限和前台服务用于通知栏、锁屏训练状态和完成提醒。")
                 Text("不收集的信息：不读取通讯录、定位、相册、麦克风、摄像头，不采集身份证号、银行卡号等敏感个人信息。")
                 Text("存储方式：Token 通过 Android Keystore 加密保存；训练状态缓存只保存在本机。")
                 Text("删除与撤回：可在设置页清除训练缓存、清除本机 Token，也可撤回同意并停止刷新和通知；服务端可执行 training-monitor rotate-token 重新生成 Token。")
@@ -1832,14 +2284,21 @@ private fun MonitorTextField(
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         singleLine = true,
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(2.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = glassFieldColor(glassStyle),
             unfocusedContainerColor = glassFieldColor(glassStyle),
-            focusedBorderColor = BrandBlue,
-            unfocusedBorderColor = if (glassStyle) Color(0x99FFFFFF) else Color(0xFFD0D5DD),
-            focusedLabelColor = BrandBlue,
-            cursorColor = BrandBlue,
+            focusedBorderColor = PixelCyan,
+            unfocusedBorderColor = PixelBorderDim,
+            focusedLabelColor = PixelCyan,
+            unfocusedLabelColor = PixelMuted,
+            cursorColor = PixelCyan,
+            focusedTextColor = PixelText,
+            unfocusedTextColor = PixelText,
+            focusedPlaceholderColor = PixelMuted,
+            unfocusedPlaceholderColor = PixelMuted,
+            focusedSupportingTextColor = PixelMuted,
+            unfocusedSupportingTextColor = PixelMuted,
         ),
         modifier = Modifier
             .fillMaxWidth()
@@ -1852,14 +2311,14 @@ private fun MonitorTextField(
 private fun ConnectionMessage(message: String, glassStyle: Boolean) {
     val isError = message.startsWith("连接失败")
     Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = if (isError) Color(0xFFFEF3F2) else if (glassStyle) Color(0xB8FFFFFF) else Color(0xFFF9FAFB),
-        border = BorderStroke(1.dp, if (isError) Color(0xFFFDA29B) else if (glassStyle) Color(0xC6FFFFFF) else Hairline),
-        modifier = Modifier.glassMaterial(glassStyle, 10.dp),
+        shape = RoundedCornerShape(2.dp),
+        color = if (isError) PixelRed.copy(alpha = 0.12f) else PixelPanelRaised,
+        border = BorderStroke(1.dp, if (isError) PixelRed else PixelBorderDim),
+        modifier = Modifier.glassMaterial(glassStyle, 2.dp),
     ) {
         Text(
             message,
-            color = if (isError) Color(0xFFB91C1C) else Color(0xFF475569),
+            color = if (isError) PixelRed else PixelText,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
         )
     }
@@ -1869,13 +2328,13 @@ private fun ConnectionMessage(message: String, glassStyle: Boolean) {
 @Composable
 private fun SettingsCard(title: String, glassStyle: Boolean, content: @Composable ColumnScope.() -> Unit) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(2.dp),
         color = glassPanelColor(glassStyle),
-        border = BorderStroke(1.dp, if (glassStyle) Color(0xCCFFFFFF) else Hairline),
-        shadowElevation = if (glassStyle) 3.dp else 0.dp,
+        border = BorderStroke(1.dp, if (glassStyle) PixelCyan.copy(alpha = 0.70f) else PixelBorder),
+        shadowElevation = 0.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .glassMaterial(glassStyle, 12.dp),
+            .glassMaterial(glassStyle, 2.dp),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -1899,20 +2358,20 @@ private fun MetricChip(
     Surface(
         color = when {
             selected -> SoftBlue
-            glassStyle -> Color(0xB8FFFFFF)
-            else -> Color.Transparent
+            glassStyle -> PixelPanelRaised
+            else -> PixelPanel
         },
-        contentColor = if (selected) BrandBlue else Color(0xFF344054),
-        shape = RoundedCornerShape(9.dp),
+        contentColor = if (selected) PixelCyan else PixelText,
+        shape = RoundedCornerShape(1.dp),
         modifier = modifier
             .clickable(onClick = onClick)
-            .glassMaterial(glassStyle, 9.dp),
+            .glassMaterial(glassStyle, 1.dp),
         border = BorderStroke(
             width = 1.dp,
             color = when {
-                selected -> Color(0xFF84ADFF)
-                glassStyle -> Color(0xCCFFFFFF)
-                else -> Hairline
+                selected -> PixelCyan
+                glassStyle -> PixelBorder
+                else -> PixelBorderDim
             },
         ),
     ) {
@@ -1949,14 +2408,15 @@ private fun StatusPill(status: String) {
     val color = when (status) {
         "training" -> BrandBlue
         "finished" -> BrandGreen
-        "error" -> Color(0xFFD92D20)
+        "error" -> PixelRed
         else -> MutedInk
     }
 
     Surface(
         color = color.copy(alpha = 0.12f),
         contentColor = color,
-        shape = RoundedCornerShape(50),
+        shape = RoundedCornerShape(2.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.75f)),
         modifier = Modifier.widthIn(min = 76.dp),
     ) {
         Text(
@@ -1974,12 +2434,12 @@ private fun StatusPill(status: String) {
 @Composable
 private fun EmptyCard(title: String, body: String, glassStyle: Boolean) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(2.dp),
         color = glassPanelColor(glassStyle),
-        border = BorderStroke(1.dp, if (glassStyle) Color(0xCCFFFFFF) else Hairline),
+        border = BorderStroke(1.dp, if (glassStyle) PixelCyan.copy(alpha = 0.70f) else PixelBorder),
         modifier = Modifier
             .fillMaxWidth()
-            .glassMaterial(glassStyle, 12.dp),
+            .glassMaterial(glassStyle, 2.dp),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -1995,10 +2455,10 @@ private fun EmptyCard(title: String, body: String, glassStyle: Boolean) {
 @Composable
 private fun BottomTabs(current: AppPage, glassStyle: Boolean, onChange: (AppPage) -> Unit) {
     Surface(
-        color = if (glassStyle) Color(0xE8FFFFFF) else Color.White,
-        border = BorderStroke(1.dp, if (glassStyle) Color(0xE6FFFFFF) else Hairline),
-        shadowElevation = 4.dp,
-        modifier = Modifier.glassMaterial(glassStyle, 12.dp),
+        color = PixelPanel,
+        border = BorderStroke(1.dp, PixelBorder),
+        shadowElevation = 0.dp,
+        modifier = Modifier.glassMaterial(glassStyle, 2.dp),
     ) {
         Row(
             modifier = Modifier
@@ -2025,17 +2485,21 @@ private fun BottomTabs(current: AppPage, glassStyle: Boolean, onChange: (AppPage
 private suspend fun fetchStatusJson(client: OkHttpClient, baseUrl: String, token: String): String {
     serverUrlValidationError(baseUrl)?.let { error(it) }
     return withContext(Dispatchers.IO) {
+        val normalizedToken = token.trim()
         val requestBuilder = Request.Builder()
             .url("${baseUrl.trim().trimEnd('/')}/api/status?history_limit=120")
             .get()
 
-        if (token.isNotBlank()) {
-            requestBuilder.header("X-Monitor-Token", token)
+        if (normalizedToken.isNotBlank()) {
+            requestBuilder.header("X-Monitor-Token", normalizedToken)
         }
 
         val request = requestBuilder.build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
+                if (response.code == 401) {
+                    error("HTTP 401：本地同步 Token 不正确，请从电脑端“手机同步”重新复制")
+                }
                 error("HTTP ${response.code}")
             }
 
@@ -2050,9 +2514,22 @@ private fun parseTrainingStatus(json: JSONObject): TrainingStatus {
 }
 
 
+private fun parseLocalPanelStatus(raw: String): TrainingStatus {
+    val parsed = parseTrainingStatus(JSONObject(raw))
+    check(parsed.source == "desktop-local") {
+        "该地址不是电脑端本地面板，请点击电脑窗口的“手机同步”获取地址"
+    }
+    return parsed
+}
+
+
 private fun parseTrainingStatus(json: JSONObject, includeRuns: Boolean): TrainingStatus {
     val metricName = json.optCleanString("metric_name", "IoU")
     val metrics = json.optJSONObject("metrics").toDoubleMap().toMutableMap()
+    val currentLoss = json.optNullableDouble("loss")
+    if (currentLoss != null) {
+        metrics.putIfAbsent("loss", currentLoss)
+    }
     val currentMetric = json.optNullableDouble("current_iou")
     if (metrics.isEmpty() && currentMetric != null) {
         metrics[metricName] = currentMetric
@@ -2080,6 +2557,11 @@ private fun parseTrainingStatus(json: JSONObject, includeRuns: Boolean): Trainin
         listOf(json.optCleanString("gpu_id")),
     )
     val runs = if (includeRuns) parseStatusRuns(json.optJSONArray("runs")) else emptyList()
+    val gpus = if (includeRuns) {
+        parseGpuSnapshots(json.optJSONObject("hardware")?.optJSONArray("gpus"))
+    } else {
+        emptyList()
+    }
 
     return TrainingStatus(
         runId = json.optCleanString("run_id").takeIf { it.isNotBlank() },
@@ -2096,6 +2578,11 @@ private fun parseTrainingStatus(json: JSONObject, includeRuns: Boolean): Trainin
         history = history,
         availableMetrics = availableMetrics,
         runs = runs,
+        gpus = gpus,
+        source = json.optCleanString("source"),
+        desktopOnline = json.optBoolean("desktop_online", true),
+        desktopError = json.optCleanString("desktop_error"),
+        desktopLastReceived = json.optCleanString("desktop_last_received"),
     )
 }
 
@@ -2108,6 +2595,26 @@ private fun parseStatusRuns(array: JSONArray?): List<TrainingStatus> {
         runs += parseTrainingStatus(item, includeRuns = false)
     }
     return runs
+}
+
+
+private fun parseGpuSnapshots(array: JSONArray?): List<GpuSnapshot> {
+    if (array == null) return emptyList()
+    val gpus = mutableListOf<GpuSnapshot>()
+    for (index in 0 until array.length()) {
+        val item = array.optJSONObject(index) ?: continue
+        val id = item.optCleanString("id", index.toString())
+        gpus += GpuSnapshot(
+            id = id,
+            name = item.optCleanString("name"),
+            utilizationPercent = item.optNullableDouble("utilization_percent"),
+            temperatureC = item.optNullableDouble("temperature_c"),
+            powerW = item.optNullableDouble("power_w"),
+            memoryUsedMib = item.optNullableDouble("memory_used_mib"),
+            memoryTotalMib = item.optNullableDouble("memory_total_mib"),
+        )
+    }
+    return gpus
 }
 
 
@@ -2210,6 +2717,15 @@ private fun chooseVisibleMetrics(status: TrainingStatus, selected: List<String>)
 
     val defaults = listOf("loss", status.metricName, "mIoU", "IoU", "mAP", "BBox mAP", "Accuracy", "accuracy", "Top1 Acc")
     return (defaults + available).filter { it in available }.distinct().take(4)
+}
+
+
+private fun coreMetricNames(status: TrainingStatus): List<String> {
+    val available = status.metricNames()
+    val loss = available.firstOrNull { metric -> metric.equals("loss", ignoreCase = true) }
+    val miou = available.firstOrNull { metric -> metric.equals("mIoU", ignoreCase = true) }
+        ?: available.firstOrNull { metric -> metric.equals("IoU", ignoreCase = true) }
+    return listOfNotNull(loss, miou).distinct()
 }
 
 
@@ -2316,6 +2832,27 @@ private fun metricDisplayName(name: String): String {
 }
 
 
+private fun TrainingStatus.latestMiou(): Double? {
+    return latestMetricValue("mIoU") ?: latestMetricValue("IoU")
+}
+
+
+private fun formatGpuPercent(value: Double?): String {
+    return value?.let { String.format(Locale.US, "%.0f%%", it.coerceIn(0.0, 100.0)) } ?: "--"
+}
+
+
+private fun formatMemory(usedMib: Double?, totalMib: Double?): String {
+    if (usedMib == null || totalMib == null || totalMib <= 0.0) return "显存 --"
+    return String.format(Locale.US, "显存 %.1f/%.1fG", usedMib / 1024.0, totalMib / 1024.0)
+}
+
+
+private fun formatTemperature(value: Double?): String {
+    return value?.let { String.format(Locale.US, "%.0f°C", it) } ?: "--°C"
+}
+
+
 private fun compactNumber(value: Double): String {
     val absValue = abs(value)
     return when {
@@ -2385,15 +2922,15 @@ internal fun normalizeBaseUrl(value: String): String {
 
 internal fun serverUrlValidationError(value: String): String? {
     val normalized = normalizeBaseUrl(value)
-    if (normalized.isBlank()) return "请先填写后端地址"
-    val uri = runCatching { URI(normalized) }.getOrNull() ?: return "后端地址格式不正确"
+    if (normalized.isBlank()) return "请先填写本地面板地址"
+    val uri = runCatching { URI(normalized) }.getOrNull() ?: return "本地面板地址格式不正确"
     val scheme = uri.scheme?.lowercase(Locale.US)
-    if (scheme !in setOf("http", "https")) return "后端地址只支持 HTTP 或 HTTPS"
+    if (scheme !in setOf("http", "https")) return "本地面板地址只支持 HTTP 或 HTTPS"
     if (uri.host.isNullOrBlank() || uri.userInfo != null || uri.fragment != null || uri.query != null) {
-        return "后端地址格式不正确"
+        return "本地面板地址格式不正确"
     }
     if (scheme == "http" && !isPrivateNetworkHost(uri.host)) {
-        return "公网服务器必须使用 HTTPS，避免访问 Token 被截获"
+        return "非局域网地址请使用 HTTPS 或 Tailscale/WireGuard"
     }
     return null
 }
@@ -2411,6 +2948,7 @@ private fun isPrivateNetworkHost(host: String): Boolean {
     if (octets.any { it !in 0..255 }) return false
     return octets[0] == 10 ||
         octets[0] == 127 ||
+        (octets[0] == 100 && octets[1] in 64..127) ||
         (octets[0] == 169 && octets[1] == 254) ||
         (octets[0] == 172 && octets[1] in 16..31) ||
         (octets[0] == 192 && octets[1] == 168)
@@ -2486,7 +3024,9 @@ private fun loadCachedStatus(context: Context): TrainingStatus? {
     val raw = settingsPreferences(context)
         .getString("cached_status_json", null)
         ?: return null
-    return runCatching { parseTrainingStatus(JSONObject(raw)) }.getOrNull()
+    return runCatching { parseTrainingStatus(JSONObject(raw)) }
+        .getOrNull()
+        ?.takeIf { it.source == "desktop-local" }
 }
 
 
@@ -2887,10 +3427,10 @@ private fun notificationCompactText(context: Context, status: TrainingStatus): S
 private fun watchNotificationTitle(status: TrainingStatus): String {
     val progressText = notificationProgressPercent(status)?.let { " $it%" } ?: ""
     return when (status.status) {
-        "training" -> "模迹 训练中$progressText"
-        "finished" -> "模迹 训练完成$progressText"
-        "error" -> "模迹 训练异常"
-        else -> "模迹 等待数据"
+        "training" -> "炼丹台 训练中$progressText"
+        "finished" -> "炼丹台 训练完成$progressText"
+        "error" -> "炼丹台 训练异常"
+        else -> "炼丹台 等待数据"
     }
 }
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 
-REPO="${TRAINING_MONITOR_REPO_SLUG:-ZephYer8/training-monitor}"
+REPO="${TRAINING_MONITOR_REPO_SLUG:-Zephyer969/training-monitor}"
 DEFAULT_BUNDLE_URL="https://github.com/$REPO/releases/latest/download/training-monitor-server.tar.gz"
 if [ -n "${TRAINING_MONITOR_GITHUB_PROXY:-}" ]; then
     DEFAULT_BUNDLE_URL="${TRAINING_MONITOR_GITHUB_PROXY%/}/$DEFAULT_BUNDLE_URL"

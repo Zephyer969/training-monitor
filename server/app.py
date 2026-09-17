@@ -15,6 +15,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+try:
+    from hardware import hardware_snapshot as read_hardware
+except ImportError:  # pragma: no cover - supports package-style imports in tests
+    from .hardware import hardware_snapshot as read_hardware
+
 
 DATA_FILE = Path(os.getenv("TRAINING_MONITOR_STATE_FILE", Path(__file__).with_name("state.json")))
 MONITOR_TOKEN = os.getenv("MONITOR_TOKEN", "")
@@ -52,12 +57,16 @@ class TrainingUpdate(BaseModel):
     gpu_ids: list[str] = Field(default_factory=list, max_length=MAX_GPU_IDS_PER_UPDATE)
     epoch: int = Field(ge=0)
     total_epochs: int = Field(ge=0)
+    step: Optional[int] = Field(default=None, ge=0)
+    total_steps: Optional[int] = Field(default=None, ge=0)
     iou: Optional[float] = None
     metric_name: str = Field(default="IoU", max_length=MAX_METRIC_NAME_LENGTH)
     metrics: Dict[str, float] = Field(default_factory=dict)
     loss: Optional[float] = Field(default=None, ge=0.0)
     eta_seconds: Optional[int] = Field(default=None, ge=0)
-    status: Literal["training", "finished", "error"] = "training"
+    phase: Literal["preparing", "training", "validating", "saving", "finished", "stopped", "paused", "error", "idle"] = "training"
+    message: Optional[str] = Field(default=None, max_length=128)
+    status: Literal["training", "paused", "stopped", "finished", "error"] = "training"
 
 
 class TrainingSnapshot(BaseModel):
@@ -85,6 +94,8 @@ def empty_run_state(run_id: Optional[str] = None) -> dict:
         "available_metrics": [],
         "best_epoch": None,
         "eta_seconds": None,
+        "phase": "idle",
+        "message": None,
         "started_at": None,
         "updated_at": None,
         "history": [],
@@ -367,14 +378,25 @@ def update_run(run: dict, update: TrainingUpdate, metrics: dict, primary_name: s
     update_available_metrics(run, metrics)
 
     run["status"] = update.status
+    if update.status in {"finished", "stopped"}:
+        run["phase"] = update.status
+    elif update.status == "error":
+        run["phase"] = "error"
+    else:
+        run["phase"] = update.phase
+    run["message"] = update.message
     run["epoch"] = update.epoch
     run["total_epochs"] = update.total_epochs
+    run["step"] = update.step
+    run["total_steps"] = update.total_steps
+    run["loss"] = metrics.get("loss")
     run["current_iou"] = primary_value
     run["metric_name"] = primary_name
     run["metrics"] = metrics
     run["updated_at"] = now_text()
     history_point = {
         "epoch": update.epoch,
+        "loss": metrics.get("loss"),
         "iou": primary_value,
         "metric_name": primary_name,
         "metrics": metrics,
@@ -490,7 +512,13 @@ def state_snapshot(history_limit: int = MAX_HISTORY_POINTS) -> dict:
     for run in safe_list(snapshot.get("runs")):
         if isinstance(run, dict):
             run["history"] = safe_list(run.get("history"))[-history_limit:] if history_limit else []
+    snapshot["hardware"] = read_hardware()
     return snapshot
+
+
+@app.get("/api/hardware", dependencies=[Depends(require_token)])
+def get_hardware() -> dict:
+    return read_hardware(force=True)
 
 
 def apply_update(update: TrainingUpdate, metrics: dict) -> None:
