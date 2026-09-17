@@ -31,6 +31,7 @@ desktop = [
 [project.scripts]
 training-monitor = "monitorctl_py:main"
 training-monitor-watch = "auto_watch:main"
+train_mot = "monitorctl_py:train_mot_main"
 
 [tool.setuptools]
 package-dir = {"" = "server"}

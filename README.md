@@ -23,6 +23,9 @@
 
 [查看炼丹台完整隐私政策](https://github.com/Zephyer969/training-monitor/blob/main/PRIVACY.md)
 
+完整中文安装、配置、启动、手机同步、安全和故障排查说明：
+[USER_GUIDE.zh-CN.md](docs/USER_GUIDE.zh-CN.md)
+
 ## 1. 快速开始
 
 推荐先用 pip 安装服务器端。安装后会像 `tensorboard` 一样在当前 Python/Conda 环境里提供 `training-monitor` 命令。学校服务器或国内机房如果直连 GitHub 很慢，优先用镜像 wheel：
@@ -297,6 +300,23 @@ Copy-Item monitor.config.example.json monitor.config.json
 或用 `start-monitor.cmd 用户@其他服务器` 临时切换目标。
 使用系统 SSH 登录配置；需要密码时在启动终端输入，不保存密码。
 首次连接新主机时按 SSH 提示核对主机指纹。
+
+如果没有 SSH 公钥，不需要先配置公钥。电脑端安装完成后，在本地 PowerShell 或 CMD
+执行一次下面两条命令，重新打开终端，然后可以直接运行：
+
+```powershell
+py -3 -m pip install -e ".[desktop]"
+py -3 -m monitorctl_py fix-path
+```
+
+```powershell
+start train_mot user@服务器地址
+```
+
+这会启动本地像素面板，并在新开的连接窗口中显示系统 SSH 的密码提示；密码只交给
+OpenSSH 使用，不保存到项目文件。`user@服务器地址` 是本次明确指定的目标，
+不会自动读取本地 SSH 配置来选择服务器。若不想打开新窗口，也可以直接运行
+`train_mot user@服务器地址`。
 
 直接连接模式自动读取物理显卡、GPU 进程和正在训练的 OpenMMLab 日志，
 通过进程打开的日志文件、`--work-dir` 和配置路径匹配实验。DDP 多进程按同一日志合并，

@@ -376,7 +376,11 @@ def desktop(args: argparse.Namespace) -> None:
         desktop_config = load_desktop_config(args.config)
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
-    url = args.url or desktop_config.get("url", "")
+    # An explicit SSH target is a one-shot, local connection request. It must
+    # win over any saved URL or SSH value so ``train_mot user@host`` never
+    # silently connects to a different server from a local config file.
+    explicit_ssh = args.ssh is not None
+    url = args.url or ("" if explicit_ssh else desktop_config.get("url", ""))
     interval = args.interval if args.interval is not None else desktop_config["interval"]
     ssh = args.ssh if args.ssh is not None else desktop_config["ssh"]
     remote_python = args.remote_python or desktop_config["remote_python"]
@@ -418,6 +422,32 @@ def desktop(args: argparse.Namespace) -> None:
                 local_token=local_token, local_token_file=local_token_file,
                 cloudflare_enabled=cloudflare_enabled, cloudflared_path=cloudflared_path,
                 local_gateway_enabled=not args.no_local_gateway)
+
+
+def train_mot_main(argv: Optional[List[str]] = None) -> None:
+    """Start the local pixel panel for one explicit SSH target.
+
+    Authentication remains owned by the operating system's OpenSSH client.
+    A password is therefore prompted by SSH and is never written to a monitor
+    config file.
+    """
+
+    values = list(sys.argv[1:] if argv is None else argv)
+    if not values or values[0] in {"-h", "--help"}:
+        print("用法: train_mot user@server [desktop options]")
+        print("示例: train_mot sys001@192.168.63.122")
+        print("密码由系统 SSH 提示输入，不会保存到项目配置。")
+        return
+
+    target = values.pop(0).strip()
+    if not target or target.startswith("-"):
+        raise SystemExit("请提供 SSH 目标，例如: train_mot user@server")
+    if any(item == "--ssh" or item.startswith("--ssh=") for item in values):
+        raise SystemExit("SSH 目标应直接写在 train_mot 后面，不要重复传入 --ssh")
+
+    parser = setup_parser()
+    args = parser.parse_args(["desktop", "--ssh", target, *values])
+    args.func(args)
 
 
 def detect_public_url() -> str:
@@ -567,22 +597,30 @@ def ensure_windows_path() -> List[Path]:
         return []
 
     scripts_dir = python_scripts_dir()
+    preferred_user_dir = user_bin_dir()
     current_entries = os.environ.get("PATH", "").split(os.pathsep)
     user_entries = windows_user_path().split(os.pathsep)
     normalized = {os.path.normcase(entry) for entry in current_entries + user_entries if entry}
-    if os.path.normcase(str(scripts_dir)) in normalized:
+    required = [scripts_dir]
+    if preferred_user_dir != scripts_dir:
+        required.append(preferred_user_dir)
+    missing = [path for path in required if os.path.normcase(str(path)) not in normalized]
+    if not missing:
         return []
 
     try:
         import winreg
 
         new_entries = [entry for entry in user_entries if entry]
-        new_entries.append(str(scripts_dir))
+        new_entries.extend(str(path) for path in missing)
         new_value = os.pathsep.join(new_entries)
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_SET_VALUE) as key:
             winreg.SetValueEx(key, "Path", 0, winreg.REG_EXPAND_SZ, new_value)
-        os.environ["PATH"] = os.environ.get("PATH", "") + os.pathsep + str(scripts_dir)
-        return [scripts_dir]
+        os.environ["PATH"] = os.environ.get("PATH", "")
+        for path in missing:
+            if str(path) not in os.environ["PATH"].split(os.pathsep):
+                os.environ["PATH"] += os.pathsep + str(path)
+        return missing
     except OSError:
         return []
 
@@ -602,6 +640,61 @@ def launcher_script() -> str:
         "#!/usr/bin/env bash\n"
         f'exec {shlex.quote(sys.executable)} -m monitorctl_py "$@"\n'
     )
+
+
+def train_mot_launcher_paths() -> List[Path]:
+    """Return user-scoped launcher locations for the local command."""
+
+    filename = "train_mot.cmd" if os.name == "nt" else "train_mot"
+    candidates = [user_bin_dir() / filename]
+    if os.name != "nt":
+        candidates.append(Path.home() / "bin" / filename)
+    unique: List[Path] = []
+    seen = set()
+    for path in candidates:
+        resolved = str(path)
+        if resolved not in seen:
+            seen.add(resolved)
+            unique.append(path)
+    return unique
+
+
+def train_mot_launcher_script() -> str:
+    """Build a source-checkout launcher without embedding any credentials."""
+
+    python = str(Path(sys.executable).resolve())
+    module_dir = str(Path(__file__).resolve().parent)
+    if os.name == "nt":
+        return (
+            "@echo off\r\n"
+            "setlocal EnableExtensions\r\n"
+            f'set "PYTHONPATH={module_dir};%PYTHONPATH%"\r\n'
+            f'"{python}" -m monitorctl_py train-mot %*\r\n'
+            "exit /b %ERRORLEVEL%\r\n"
+        )
+    return (
+        "#!/usr/bin/env sh\n"
+        f'export PYTHONPATH={shlex.quote(module_dir)}"${{PYTHONPATH:+:$PYTHONPATH}}"\n'
+        f'exec {shlex.quote(python)} -m monitorctl_py train-mot "$@"\n'
+    )
+
+
+def ensure_train_mot_launcher() -> List[Path]:
+    written: List[Path] = []
+    content = train_mot_launcher_script()
+    for path in train_mot_launcher_paths():
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            current = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
+            if current != content:
+                with path.open("w", encoding="utf-8", newline="") as file:
+                    file.write(content)
+                if os.name != "nt":
+                    path.chmod(0o755)
+                written.append(path)
+        except OSError:
+            continue
+    return written
 
 
 def ensure_launcher_files() -> List[Path]:
@@ -648,6 +741,7 @@ def write_shell_profile_exports() -> List[Path]:
 def ensure_command_access() -> None:
     if os.name == "nt":
         ensure_windows_path()
+        ensure_train_mot_launcher()
         return
     if os.getenv("TRAINING_MONITOR_SKIP_PATH_BOOTSTRAP") == "1":
         return
@@ -655,6 +749,7 @@ def ensure_command_access() -> None:
         return
 
     written = ensure_launcher_files()
+    written += ensure_train_mot_launcher()
     changed_profiles = write_shell_profile_exports()
     if not written and not changed_profiles:
         return
@@ -678,10 +773,14 @@ def fix_path(_: argparse.Namespace) -> None:
 
     if os.name == "nt":
         changed = ensure_windows_path()
+        launchers = ensure_train_mot_launcher()
         scripts_dir = python_scripts_dir()
         print(f"script directory: {scripts_dir}")
+        print(f"local launcher: {user_bin_dir() / 'train_mot.cmd'}")
+        if launchers:
+            print("created or updated launcher: train_mot.cmd")
         if changed:
-            print("updated user PATH. Open a new terminal, then run: training-monitor status")
+            print("updated user PATH. Open a new terminal, then run: start train_mot user@server")
         elif path_has_user_bin():
             print("PATH is already configured.")
         else:
@@ -816,6 +915,9 @@ def setup_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     ensure_command_access()
+    if len(sys.argv) > 1 and sys.argv[1] in {"train-mot", "train_mot"}:
+        train_mot_main(sys.argv[2:])
+        return
     parser = setup_parser()
     args = parser.parse_args()
     if not hasattr(args, "func"):
